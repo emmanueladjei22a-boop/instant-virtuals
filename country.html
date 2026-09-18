@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Select country</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <nav class="nav"><div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
+  </div></nav>
+  <div class="flow">
+    <div class="pill">STEP 2 OF 4</div>
+    <h1>SELECT YOUR <span>COUNTRY</span></h1>
+    <p class="sub">Choose your payment region to continue</p>
+    <div class="choice" style="cursor:default"><span>🌐 Registration fee</span><span class="amt" id="feeTop">—</span></div>
+    <button class="choice" id="gh"><span>🇬🇭 <b>Ghana</b><small id="ghSub">Pay via Mobile Money</small></span><span>›</span></button>
+    <button class="choice" id="ng"><span>🇳🇬 <b>Nigeria</b><small id="ngSub">Bank Transfer</small></span><span>›</span></button>
+    <button class="choice" id="ot"><span>🌐 <b>Other Country</b><small id="otSub">Pay via Telegram</small></span><span>›</span></button>
+    <p class="hint" style="text-align:center"><a href="/">Cancel</a></p>
+  </div>
+  <script src="/api.js"></script>
+  <script>
+    (async () => {
+      const { user, settings } = await api("/api/me").catch(() => ({ user: null }));
+      if (!user) return location.replace("/signup.html");
+      if (user.role === "admin" || user.paid) return location.replace("/app.html");
+      document.getElementById("feeTop").textContent = "GH₵" + (settings.registrationFeeDisplayGHS || settings.registrationFeeGHS);
+      document.getElementById("ghSub").textContent = "GH₵" + (settings.registrationFeeDisplayGHS || settings.registrationFeeGHS) + " – Pay via Mobile Money";
+      document.getElementById("ngSub").textContent = "₦" + settings.registrationFeeNGN + " – Bank Transfer";
+      document.getElementById("otSub").textContent = "Pay via Telegram";
+      async function pick(country) {
+        await api("/api/country", { method: "POST", body: { country } });
+        location.href = country === "OTHER" ? (settings.telegramPay || "#") : "/pay.html";
+      }
+      document.getElementById("gh").onclick = () => pick("GH");
+      document.getElementById("ng").onclick = () => pick("NG");
+      document.getElementById("ot").onclick = () => pick("OTHER");
+    })();
+  </script>
+</body>
+</html>

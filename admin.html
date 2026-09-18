@@ -9,6 +9,7 @@
   <div style="height:18px"></div>
   <button class="linkish" data-tab="overview">Overview</button>
   <button class="linkish" data-tab="users">Users</button>
+  <button class="linkish" data-tab="pays">Payments</button>
   <button class="linkish" data-tab="tips">Publish tips</button>
   <button class="linkish" data-tab="slips">User slips</button>
   <button class="linkish" data-tab="content">Site content</button>
@@ -27,6 +28,7 @@
     </div>
   </section>
   <section id="users" class="panel hidden"><div class="card"><h3>Users</h3><div id="userTable"></div></div></section>
+  <section id="pays" class="panel hidden"><div class="card"><h3>Payment proofs</h3><div id="payTable"></div></div></section>
   <section id="tips" class="panel hidden"><div class="card">
     <h3>Publish a tip</h3>
     <div class="field"><label>Match</label><input id="tMatch"/></div>
@@ -53,8 +55,13 @@
     <div class="field"><label>Site name</label><input id="sName"/></div>
     <div class="field"><label>Tagline</label><input id="sTag"/></div>
     <div class="field"><label>Support link</label><input id="sSup"/></div>
-    <div class="field"><label>Fee GHS</label><input id="sGhs" type="number"/></div>
+    <div class="field"><label>Fee GHS (exact send amount)</label><input id="sGhs" type="number"/></div>
+    <div class="field"><label>Fee GHS shown on country list</label><input id="sGhsShow" type="number"/></div>
     <div class="field"><label>Fee NGN</label><input id="sNgn" type="number"/></div>
+    <div class="field"><label>MoMo network</label><input id="sNet"/></div>
+    <div class="field"><label>Your MoMo number</label><input id="sNum"/></div>
+    <div class="field"><label>Account name</label><input id="sAcc"/></div>
+    <div class="field"><label>Other country Telegram link</label><input id="sTg"/></div>
     <div class="field"><label>Require fee</label><select id="sFee"><option value="yes">Yes</option><option value="no">No</option></select></div>
     <div class="field"><label>Require approval</label><select id="sAppr"><option value="yes">Yes</option><option value="no">No</option></select></div>
     <div class="field"><label>Maintenance</label><select id="sMaint"><option value="no">Off</option><option value="yes">On</option></select></div>
@@ -95,7 +102,14 @@ async function refresh(){
   document.getElementById("sTag").value=s.tagline;
   document.getElementById("sSup").value=s.supportLink;
   document.getElementById("sGhs").value=s.registrationFeeGHS;
+  document.getElementById("sGhsShow").value=s.registrationFeeDisplayGHS||50;
   document.getElementById("sNgn").value=s.registrationFeeNGN;
+  document.getElementById("sNet").value=s.momoNetwork||"";
+  document.getElementById("sNum").value=s.momoNumber||"";
+  document.getElementById("sAcc").value=s.momoName||"";
+  document.getElementById("sTg").value=s.telegramPay||"";
+  const pays=(await api("/api/admin/payments").catch(()=>({payments:[]}))).payments||[];
+  document.getElementById("payTable").innerHTML=pays.length?`<table class="table"><tr><th>User</th><th>Amount</th><th>Sender</th><th>From</th><th>Tx</th><th></th></tr>${pays.map(p=>`<tr><td>${p.user_name||""}<br><small>${p.user_email||""}</small></td><td>${p.currency} ${p.amount}<br><small>${p.status}</small></td><td>${p.senderName||""}</td><td>${p.payerNumber||""}</td><td>${p.txId||"—"}</td><td>${p.user_id?`<button class="btn btn-green" onclick="act('${p.user_id}','paid')">Mark paid</button>`:""}</td></tr>`).join("")}</table>`:"<p class='sub'>No proofs yet.</p>";
   document.getElementById("sFee").value=s.requireFee?"yes":"no";
   document.getElementById("sAppr").value=s.requireApproval?"yes":"no";
   document.getElementById("sMaint").value=s.maintenance?"yes":"no";
@@ -118,7 +132,8 @@ document.getElementById("saveContent").onclick=async()=>{
 document.getElementById("saveSet").onclick=async()=>{
   await api("/api/admin/settings",{method:"POST",body:{
     siteName:sName.value,tagline:sTag.value,supportLink:sSup.value,
-    registrationFeeGHS:Number(sGhs.value),registrationFeeNGN:Number(sNgn.value),
+    registrationFeeGHS:Number(sGhs.value),registrationFeeDisplayGHS:Number(sGhsShow.value),registrationFeeNGN:Number(sNgn.value),
+    momoNetwork:sNet.value,momoNumber:sNum.value,momoName:sAcc.value,telegramPay:sTg.value,
     requireFee:sFee.value==="yes",requireApproval:sAppr.value==="yes",maintenance:sMaint.value==="yes",
     disclaimer:sDisc.value
   }}); alert("Saved");

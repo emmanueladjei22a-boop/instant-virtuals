@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pay</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <nav class="nav"><div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
+  </div></nav>
+  <div class="flow">
+    <div class="pill">STEP 3 OF 4</div>
+    <h1 id="title">PAY VIA <span>MOBILE MONEY</span></h1>
+    <p class="sub">Send the exact amount, then upload your proof below</p>
+    <div class="paybox">
+      <div class="send">↓ SEND TO ↓</div>
+      <div class="kv"><span>NETWORK</span><b id="net">—</b></div>
+      <div class="kv"><span>MOBILE MONEY NUMBER</span><span><b id="num">—</b> <button class="copy" type="button" id="cNum">Copy</button></span></div>
+      <div class="kv"><span>ACCOUNT NAME</span><b id="acc">—</b></div>
+      <div class="kv"><span>AMOUNT</span><span><span class="g" id="amt">—</span> <button class="copy" type="button" id="cAmt">Copy</button></span></div>
+      <ol class="steps-momo">
+        <li><span class="num">1</span><span>Dial *170# (MTN) / *110# (Telecel) / *718# (AT) on your line</span></li>
+        <li><span class="num">2</span><span>Select Transfer / Send Money</span></li>
+        <li><span class="num">3</span><span>Enter the number shown above</span></li>
+        <li><span class="num">4</span><span>Enter the exact amount</span></li>
+        <li><span class="num">5</span><span>Confirm and enter PIN</span></li>
+      </ol>
+    </div>
+    <form id="form">
+      <div class="field"><label>TRANSACTION ID (OPTIONAL)</label><input name="txId" placeholder="e.g. 000012345678" /></div>
+      <div class="field"><label>SENDER NAME (AS ON MOMO / BANK) *</label><input name="senderName" required placeholder="e.g. Abel Afriyie" /></div>
+      <div class="field"><label>YOUR NUMBER YOU PAID FROM *</label><input name="payerNumber" required placeholder="e.g. 0241234567" /></div>
+      <div class="field">
+        <label>UPLOAD PAYMENT SCREENSHOT *</label>
+        <label class="dropzone" for="shot">Tap to upload screenshot<br><small>PNG, JPG, WEBP</small></label>
+        <input id="shot" type="file" accept="image/*" hidden />
+        <img id="preview" class="preview hidden" alt="proof" />
+      </div>
+      <div class="warn"><b>IMPORTANT</b><br>Uploading a fake or edited payment screenshot can get the account banned. Admin checks proofs by hand.</div>
+      <button class="btn btn-orange block" type="submit">SUBMIT PAYMENT PROOF →</button>
+    </form>
+    <p class="hint" style="text-align:center"><a href="/country.html">Back</a></p>
+    <p class="hint" id="err" style="color:#fca5a5"></p>
+  </div>
+  <script src="/api.js"></script>
+  <script>
+    let screenshot = "", screenshotName = "";
+    (async () => {
+      const { user, settings } = await api("/api/me").catch(() => ({ user: null }));
+      if (!user) return location.replace("/signup.html");
+      if (user.role === "admin" || user.paid) return location.replace("/app.html");
+      if (user.paymentStatus === "proof_sent") return location.replace("/pending.html");
+      const ng = user.country === "NG";
+      document.getElementById("title").innerHTML = ng ? "PAY VIA <span>BANK TRANSFER</span>" : "PAY VIA <span>MOBILE MONEY</span>";
+      document.getElementById("net").textContent = ng ? (settings.ngBank || "BANK") : (settings.momoNetwork || "TELECEL");
+      document.getElementById("num").textContent = settings.momoNumber || "SET IN ADMIN";
+      document.getElementById("acc").textContent = settings.momoName || "SET IN ADMIN";
+      document.getElementById("amt").textContent = ng ? ("₦" + settings.registrationFeeNGN) : ("GH₵" + settings.registrationFeeGHS);
+      const copy = (id) => navigator.clipboard.writeText(document.getElementById(id).textContent);
+      document.getElementById("cNum").onclick = () => copy("num");
+      document.getElementById("cAmt").onclick = () => copy("amt");
+    })();
+    document.getElementById("shot").onchange = (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      screenshotName = f.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        screenshot = reader.result;
+        const img = document.getElementById("preview");
+        img.src = screenshot;
+        img.classList.remove("hidden");
+      };
+      reader.readAsDataURL(f);
+    };
+    document.getElementById("form").onsubmit = async (e) => {
+      e.preventDefault();
+      if (!screenshot) { document.getElementById("err").textContent = "Upload the payment screenshot."; return; }
+      const fd = new FormData(e.target);
+      try {
+        await api("/api/payment-proof", { method: "POST", body: {
+          txId: fd.get("txId"), senderName: fd.get("senderName"), payerNumber: fd.get("payerNumber"),
+          screenshotName, screenshot
+        }});
+        location.href = "/pending.html";
+      } catch (err) { document.getElementById("err").textContent = err.message; }
+    };
+  </script>
+</body>
+</html>

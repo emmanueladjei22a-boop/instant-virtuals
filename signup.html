@@ -3,43 +3,31 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Sign up</title><link rel="stylesheet" href="/app.css"/>
 </head><body>
-<div class="auth-page"><div class="auth-card card">
+<nav class="nav"><div class="wrap nav-inner">
   <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
-  <h1>Create account</h1>
-  <form id="form">
-    <div class="field"><label>Full name</label><input name="name" required/></div>
+</div></nav>
+<div class="auth-page"><div class="auth-card">
+  <div class="pill">STEP 1 OF 4</div>
+  <h1>CREATE YOUR <span style="color:var(--orange)">ACCOUNT</span></h1>
+  <p class="sub">Sign up first. Next you pick Ghana or Nigeria and pay the registration fee.</p>
+  <form id="form" class="card">
+    <div class="field"><label>Full name</label><input name="name" required placeholder="Your name"/></div>
     <div class="field"><label>Email</label><input name="email" type="email" required/></div>
-    <div class="field"><label>Phone</label><input name="phone" required/></div>
-    <div class="field"><label>Country</label>
-      <select name="country"><option value="GH">Ghana (GHS)</option><option value="NG">Nigeria (NGN)</option></select>
-    </div>
+    <div class="field"><label>Phone</label><input name="phone" required placeholder="024..."/></div>
     <div class="field"><label>Password</label><input name="password" type="password" required minlength="6"/></div>
-    <div class="fee" id="feeBox"></div>
-    <button class="btn btn-orange block">Create account</button>
+    <button class="btn btn-orange block">Continue</button>
   </form>
   <p class="hint">Already have an account? <a href="/login.html">Log in</a></p>
   <p class="hint" id="err" style="color:#fca5a5"></p>
 </div></div>
 <script src="/api.js"></script>
 <script>
-let settings = {};
-api("/api/public").then(({settings:s})=>{
-  settings=s;
-  const box=document.getElementById("feeBox");
-  const draw=()=>{
-    const c=document.querySelector("[name=country]").value;
-    const amt=c==="NG"?"₦"+s.registrationFeeNGN:"GH₵"+s.registrationFeeGHS;
-    box.innerHTML = s.requireFee ? `<div>Registration fee</div><strong>${amt}</strong><div class="hint">Admin marks this paid after you send MoMo / bank. Live Paystack can be wired next.</div>` : "Fee currently off.";
-  };
-  draw();
-  document.querySelector("[name=country]").onchange=draw;
-});
 document.getElementById("form").onsubmit=async e=>{
   e.preventDefault();
   const fd=new FormData(e.target);
   try{
-    await api("/api/signup",{method:"POST",body:Object.fromEntries(fd)});
-    location.href="/app.html";
+    await api("/api/signup",{method:"POST",body:{...Object.fromEntries(fd),country:"GH"}});
+    location.href="/country.html";
   }catch(err){document.getElementById("err").textContent=err.message;}
 };
 </script>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Waiting approval</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <nav class="nav"><div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
+  </div></nav>
+  <div class="flow">
+    <div class="pill">STEP 4 OF 4</div>
+    <h1>PAYMENT <span>SUBMITTED</span></h1>
+    <p class="sub">Admin will check your proof and approve the account. This is not instant.</p>
+    <div class="card">
+      <p>Keep this page or come back later and log in. When the payment is marked paid you can open the desk.</p>
+    </div>
+    <p class="hint"><a class="btn btn-orange block" href="/app.html" style="margin-top:16px">Check status</a></p>
+  </div>
+  <script src="/api.js"></script>
+  <script>
+    api("/api/me").then(({user}) => {
+      if (!user) location.replace("/login.html");
+      if (user.paid && user.status === "active") location.replace("/app.html");
+    }).catch(() => location.replace("/login.html"));
+  </script>
+</body>
+</html>

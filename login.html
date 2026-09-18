@@ -21,7 +21,10 @@ document.getElementById("form").onsubmit=async e=>{
   const fd=new FormData(e.target);
   try{
     const {user}=await api("/api/login",{method:"POST",body:Object.fromEntries(fd)});
-    location.href=user.role==="admin"?"/admin.html":"/app.html";
+    if(user.role==="admin") location.href="/admin.html";
+    else if(user.paid && user.status==="active") location.href="/app.html";
+    else if(user.paymentStatus==="proof_sent") location.href="/pending.html";
+    else location.href="/country.html";
   }catch(err){document.getElementById("err").textContent=err.message;}
 };
 </script>

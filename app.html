@@ -48,6 +48,10 @@ let me, settings, imageName="";
     const data=await api("/api/me");
     me=data.user; settings=data.settings;
   }catch{ location.href="/login.html"; return; }
+  if(me.role!=="admin" && settings.requireFee && !me.paid){
+    location.href = me.paymentStatus==="proof_sent" ? "/pending.html" : "/country.html";
+    return;
+  }
   if(settings.maintenance && me.role!=="admin"){
     document.body.innerHTML="<div class='auth-page'><div class='card'>Maintenance. Try later.</div></div>";
     return;

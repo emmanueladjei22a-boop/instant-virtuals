@@ -85,6 +85,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 .preview { max-height: 220px; margin: 10px auto 0; border-radius: 12px; }
 .footer { padding: 24px 0 40px; color: var(--dim); font-size: 12px; text-align: center; }
+.flow { width: min(520px, calc(100% - 28px)); margin: 24px auto 80px; }
+.flow h1 { font-size: clamp(32px, 9vw, 48px); line-height: .95; letter-spacing: -1px; text-transform: uppercase; margin: 12px 0 8px; }
+.flow h1 span { color: var(--orange); }
+.choice { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: #120c09; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 16px; margin: 10px 0; cursor: pointer; color: inherit; }
+.choice:hover { border-color: rgba(255,122,24,.45); }
+.choice small { display: block; color: var(--muted); font-weight: 600; margin-top: 3px; }
+.choice .amt { color: var(--orange); font-weight: 800; }
+.paybox { border: 1px solid rgba(255,122,24,.28); border-radius: 18px; padding: 16px; background: #120c09; }
+.paybox .send { text-align: center; color: var(--orange); font-weight: 800; letter-spacing: 1px; font-size: 12px; margin-bottom: 10px; }
+.kv { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid #2a221c; font-size: 13px; }
+.kv b { color: var(--orange); }
+.kv .g { color: var(--green); }
+.copy { background: #1b1410; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 800; color: var(--text); cursor: pointer; }
+.steps-momo { margin: 14px 0 0; }
+.steps-momo li { list-style: none; display: flex; gap: 10px; margin: 10px 0; color: var(--muted); font-size: 14px; }
+.num { width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: #1a0b00; display: grid; place-items: center; font-weight: 800; flex: none; }
+.dropzone { border: 1.5px dashed rgba(255,122,24,.45); border-radius: 16px; padding: 28px 12px; text-align: center; color: var(--muted); }
+.warn { background: #1b0f0a; border: 1px solid rgba(255,80,0,.35); border-radius: 14px; padding: 14px; margin: 14px 0; font-size: 13px; color: #f3d2c2; }
+.warn b { color: #ff6a3d; }
 @media (min-width: 860px) {
   .steps, .reviews { grid-template-columns: 1fr 1fr; }
   .grid-2 { grid-template-columns: 1.15fr .85fr; }

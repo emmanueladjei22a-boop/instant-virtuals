@@ -80,6 +80,14 @@ function syncAdmin(data) {
   admin.role = "admin";
   admin.status = "active";
   admin.paid = true;
+  data.settings.requireFee = false;
+  data.settings.requireApproval = false;
+  data.users.forEach((u) => {
+    if (u.status !== "blocked") {
+      u.status = "active";
+      u.paid = true;
+    }
+  });
   return data;
 }
 

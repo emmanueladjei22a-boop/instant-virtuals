@@ -12,10 +12,14 @@
     <button class="btn btn-orange block">Log in</button>
   </form>
   <p class="hint">No account? <a href="/signup.html">Sign up</a></p>
+  <p class="hint" id="hint"></p>
   <p class="hint" id="err" style="color:#fca5a5"></p>
 </div></div>
 <script src="/api.js"></script>
 <script>
+api("/api/public").then(({settings})=>{
+  if(settings && settings.adminHint) document.getElementById("hint").textContent="Admin email on server: "+settings.adminHint;
+}).catch(()=>{});
 document.getElementById("form").onsubmit=async e=>{
   e.preventDefault();
   const fd=new FormData(e.target);

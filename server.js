@@ -93,16 +93,23 @@ function parseFixtures(text) {
     });
 }
 function marketLean(fx) {
-  const entries = [
-    { pick: "Home", team: fx.home, odd: fx.odds.home },
-    { pick: "Draw", team: "Draw", odd: fx.odds.draw },
-    { pick: "Away", team: fx.away, odd: fx.odds.away },
-  ].sort((a, b) => a.odd - b.odd);
-  const best = entries[0];
+  const raw = [
+    { pick: "Home", team: fx.home, odd: Number(fx.odds.home) || 2.5 },
+    { pick: "Draw", team: "Draw", odd: Number(fx.odds.draw) || 3.2 },
+    { pick: "Away", team: fx.away, odd: Number(fx.odds.away) || 3.4 },
+  ];
+  const inv = raw.map((r) => 1 / r.odd);
+  const sum = inv.reduce((a, b) => a + b, 0) || 1;
+  const board = raw.map((r, i) => ({
+    ...r,
+    impliedPct: Math.round((inv[i] / sum) * 100),
+  }));
+  const ranked = [...board].sort((a, b) => b.impliedPct - a.impliedPct);
+  const best = ranked[0];
   return {
     ...best,
-    impliedPct: Math.round((1 / best.odd) * 100),
-    note: "Lowest listed odd = market favourite. Not a predicted RNG outcome.",
+    board,
+    note: "Generated from listed 1X2 odds (implied chance). Instant Virtuals results are still simulated — this is not a guaranteed outcome.",
   };
 }
 

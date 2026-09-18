@@ -140,3 +140,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ticket-row .lean { color:var(--orange); font-weight:800; }
 .ticket-row .lean em { color:#86efac; font-style:normal; }
 .ticket-mini { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid #2a221c; color:var(--muted); font-size:13px; }
+.barline { display:grid; grid-template-columns:64px 1fr 40px; align-items:center; gap:8px; margin:6px 0; font-size:12px; color:var(--muted); }
+.barline i { display:block; height:8px; background:linear-gradient(90deg,#ff8a1f,#ff4d00); border-radius:99px; }
+.barline b { color:var(--text); text-align:right; }

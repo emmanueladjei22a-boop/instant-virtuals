@@ -35,7 +35,7 @@
         <label>FIXTURES</label>
         <textarea id="fx" rows="5" placeholder="ARS vs MCI 1.90 3.40 3.80"></textarea>
       </div>
-      <button class="btn btn-orange block" id="analyse">Analyse this round</button>
+      <button class="btn btn-orange block" id="analyse">Generate analysis</button>
     </section>
     <section class="desk-card">
       <div class="desk-label">THIS ROUND</div>
@@ -104,7 +104,9 @@
           const slip = (await api("/api/analyse", { method: "POST", body: { fixturesText: document.getElementById("fx").value, imageName } })).slip;
           document.getElementById("result").innerHTML = slip.fixtures.map((fx, i) => {
             const lean = slip.leans[i];
-            return `<div class="ticket-row"><div class="teams">${fx.home} <span>vs</span> ${fx.away}</div><div class="odds">${fx.odds.home} · ${fx.odds.draw} · ${fx.odds.away}</div><div class="lean">${lean.pick} <em>@${lean.odd}</em></div></div>`;
+            const board = lean.board || [];
+            const bars = board.map((b) => `<div class="barline"><span>${b.pick}</span><i style="width:${b.impliedPct}%"></i><b>${b.impliedPct}%</b></div>`).join("");
+            return `<div class="ticket-row"><div class="teams">${fx.home} <span>vs</span> ${fx.away}</div><div class="odds">${fx.odds.home} · ${fx.odds.draw} · ${fx.odds.away}</div>${bars}<div class="lean">LEAN ${lean.pick} <em>@${lean.odd}</em></div></div>`;
           }).join("") + `<p class="hint">${slip.leans[0] ? slip.leans[0].note : ""}</p>`;
           document.getElementById("kCredits").textContent = (await api("/api/me")).user.credits;
           await loadLists();

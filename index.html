@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Instant Virtuals</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
+      <div class="nav-actions" id="nav"></div>
+    </div>
+  </nav>
+  <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
+  <header class="hero wrap">
+    <div class="pill"><span class="dot"></span> LIVE SITE</div>
+    <h1>Instant <span>Virtuals</span></h1>
+    <div class="kicker" id="tagline"></div>
+    <p class="lead">Upload or type SportyBet Instant Football fixtures. The desk marks the market favourite from the odds. Admin publishes official tips for every logged-in user.</p>
+    <div class="hero-actions">
+      <a class="btn btn-orange" href="/signup.html">Get started</a>
+      <a class="btn btn-line" href="#how">How it works</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><strong id="statWinners">0</strong><span>DISPLAYED COUNT</span></div>
+      <div class="stat"><strong id="statWon">GHS 0</strong><span>DISPLAYED RETURNS</span></div>
+      <div class="stat"><strong id="statRate">—</strong><span>WIN RATE LABEL</span></div>
+    </div>
+  </header>
+  <section class="section wrap" id="how">
+    <h2>How it works</h2>
+    <p class="sub">Shared live database. Admin controls access.</p>
+    <div class="steps">
+      <article class="card"><div class="step-n">STEP 01</div><h3>Open SportyBet</h3><p>Instant Football / Instant Virtuals round.</p></article>
+      <article class="card"><div class="step-n">STEP 02</div><h3>Capture fixtures</h3><p>Screenshot plus typed team names and 1X2 odds.</p></article>
+      <article class="card"><div class="step-n">STEP 03</div><h3>Desk read</h3><p>Market favourite = shortest odd. Admin tips appear separately.</p></article>
+      <article class="card"><div class="step-n">STEP 04</div><h3>You decide</h3><p>Results on Instant Virtuals are still simulated + RNG.</p></article>
+    </div>
+  </section>
+  <section class="section wrap">
+    <h2>Community</h2>
+    <div class="reviews" id="reviews"></div>
+  </section>
+  <p class="footer wrap" id="disclaimer"></p>
+  <script src="/api.js"></script>
+  <script>
+    (async () => {
+      const { settings } = await api("/api/public");
+      document.getElementById("tagline").textContent = settings.tagline;
+      document.getElementById("disclaimer").textContent = settings.disclaimer;
+      document.getElementById("statWinners").textContent = settings.stats.winners;
+      document.getElementById("statWon").textContent = "GHS " + settings.stats.totalWon;
+      document.getElementById("statRate").textContent = settings.stats.winRateLabel;
+      const tick = settings.ticker.concat(settings.ticker);
+      document.getElementById("ticker").innerHTML = tick.map(t => `<span>${t}</span>`).join("");
+      document.getElementById("reviews").innerHTML = settings.testimonials.map(t =>
+        `<article class="card"><div class="stars">★★★★★</div><p>“${t.text}”</p><div class="who">${t.name} · ${t.city}</div></article>`
+      ).join("");
+      let me = null;
+      try { me = (await api("/api/me")).user; } catch {}
+      document.getElementById("nav").innerHTML = me
+        ? `<a class="btn btn-ghost" href="/app.html">Open desk</a>${me.role==="admin"?`<a class="btn btn-orange" href="/admin.html">Admin</a>`:""}`
+        : `<a class="btn btn-ghost" href="/login.html">Log In</a><a class="btn btn-orange" href="/signup.html">Sign Up</a>`;
+    })();
+  </script>
+</body>
+</html>

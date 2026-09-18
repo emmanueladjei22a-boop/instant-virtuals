@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Log in</title><link rel="stylesheet" href="/app.css"/>
+</head><body>
+<div class="auth-page"><div class="auth-card card">
+  <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
+  <h1>Welcome back</h1>
+  <form id="form">
+    <div class="field"><label>Email</label><input name="email" type="email" required/></div>
+    <div class="field"><label>Password</label><input name="password" type="password" required/></div>
+    <button class="btn btn-orange block">Log in</button>
+  </form>
+  <p class="hint">No account? <a href="/signup.html">Sign up</a></p>
+  <p class="hint" id="err" style="color:#fca5a5"></p>
+</div></div>
+<script src="/api.js"></script>
+<script>
+document.getElementById("form").onsubmit=async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target);
+  try{
+    const {user}=await api("/api/login",{method:"POST",body:Object.fromEntries(fd)});
+    location.href=user.role==="admin"?"/admin.html":"/app.html";
+  }catch(err){document.getElementById("err").textContent=err.message;}
+};
+</script>
+</body></html>

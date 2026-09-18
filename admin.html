@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Admin</title><link rel="stylesheet" href="/app.css"/>
+</head><body>
+<div class="app-shell">
+<aside class="side">
+  <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
+  <div style="height:18px"></div>
+  <button class="linkish" data-tab="overview">Overview</button>
+  <button class="linkish" data-tab="users">Users</button>
+  <button class="linkish" data-tab="tips">Publish tips</button>
+  <button class="linkish" data-tab="slips">User slips</button>
+  <button class="linkish" data-tab="content">Site content</button>
+  <button class="linkish" data-tab="settings">Settings</button>
+  <a href="/app.html">User desk</a>
+  <button class="linkish" id="out">Log out</button>
+</aside>
+<main class="main">
+  <div class="topbar"><h2>Admin control — live database</h2></div>
+  <div class="notice">Every visitor hits this same server. Approve users here and they can log in from another phone immediately.</div>
+  <section id="overview" class="panel">
+    <div class="grid-3">
+      <div class="card kpi">Users<strong id="oUsers">0</strong></div>
+      <div class="card kpi">Pending<strong id="oPending">0</strong></div>
+      <div class="card kpi">Slips<strong id="oSlips">0</strong></div>
+    </div>
+  </section>
+  <section id="users" class="panel hidden"><div class="card"><h3>Users</h3><div id="userTable"></div></div></section>
+  <section id="tips" class="panel hidden"><div class="card">
+    <h3>Publish a tip</h3>
+    <div class="field"><label>Match</label><input id="tMatch"/></div>
+    <div class="field"><label>Selection</label><input id="tSel"/></div>
+    <div class="field"><label>Odd</label><input id="tOdd"/></div>
+    <div class="field"><label>Note</label><input id="tNote"/></div>
+    <button class="btn btn-orange" id="pub">Publish</button>
+    <div id="tipTable" style="margin-top:16px"></div>
+  </div></section>
+  <section id="slips" class="panel hidden"><div class="card"><h3>All slips</h3><div id="slipTable"></div></div></section>
+  <section id="content" class="panel hidden"><div class="card">
+    <h3>Homepage content</h3>
+    <div class="field"><label>Ticker (one per line)</label><textarea id="cTicker" rows="4"></textarea></div>
+    <div class="field"><label>Testimonials JSON</label><textarea id="cReviews" rows="6"></textarea></div>
+    <div class="grid-3">
+      <div class="field"><label>Displayed count</label><input id="cWin" type="number"/></div>
+      <div class="field"><label>Displayed total won</label><input id="cTot" type="number"/></div>
+      <div class="field"><label>Win rate label</label><input id="cRate"/></div>
+    </div>
+    <button class="btn btn-orange" id="saveContent">Save content</button>
+  </div></section>
+  <section id="settings" class="panel hidden"><div class="card">
+    <h3>Settings</h3>
+    <div class="field"><label>Site name</label><input id="sName"/></div>
+    <div class="field"><label>Tagline</label><input id="sTag"/></div>
+    <div class="field"><label>Support link</label><input id="sSup"/></div>
+    <div class="field"><label>Fee GHS</label><input id="sGhs" type="number"/></div>
+    <div class="field"><label>Fee NGN</label><input id="sNgn" type="number"/></div>
+    <div class="field"><label>Require fee</label><select id="sFee"><option value="yes">Yes</option><option value="no">No</option></select></div>
+    <div class="field"><label>Require approval</label><select id="sAppr"><option value="yes">Yes</option><option value="no">No</option></select></div>
+    <div class="field"><label>Maintenance</label><select id="sMaint"><option value="no">Off</option><option value="yes">On</option></select></div>
+    <div class="field"><label>Disclaimer</label><textarea id="sDisc" rows="5"></textarea></div>
+    <button class="btn btn-orange" id="saveSet">Save settings</button>
+  </div></section>
+</main>
+</div>
+<script src="/api.js"></script>
+<script>
+function show(tab){document.querySelectorAll(".panel").forEach(p=>p.classList.add("hidden"));document.getElementById(tab).classList.remove("hidden");}
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>show(b.dataset.tab));
+async function refresh(){
+  const me=await api("/api/me").catch(()=>null);
+  if(!me || me.user.role!=="admin"){ location.href="/login.html"; return; }
+  const o=await api("/api/admin/overview");
+  document.getElementById("oUsers").textContent=o.users;
+  document.getElementById("oPending").textContent=o.pending;
+  document.getElementById("oSlips").textContent=o.slips;
+  const {users}=await api("/api/admin/users");
+  document.getElementById("userTable").innerHTML=`<table class="table"><tr><th>Name</th><th>Email</th><th>Status</th><th>Paid</th><th>Credits</th><th></th></tr>${
+    users.map(u=>`<tr><td>${u.name}<br><small>${u.role}</small></td><td>${u.email}<br><small>${u.phone||""}</small></td><td><span class="badge ${u.status==="active"?"ok":"wait"}">${u.status}</span></td><td>${u.paid?"yes":"no"}</td><td>${u.credits}</td><td>${u.role==="admin"?"—":`
+      <button class="btn btn-green" onclick="act('${u.id}','approve')">Approve</button>
+      <button class="btn btn-line" onclick="act('${u.id}','paid')">Mark paid</button>
+      <button class="btn btn-line" onclick="act('${u.id}','credit')">+5</button>
+      <button class="btn btn-danger" onclick="act('${u.id}','block')">Block</button>`}</td></tr>`).join("")}</table>`;
+  const {picks}=await api("/api/picks");
+  document.getElementById("tipTable").innerHTML=picks.length?`<table class="table"><tr><th>Match</th><th>Tip</th><th>Odd</th><th>Note</th></tr>${picks.map(p=>`<tr><td>${p.match}</td><td>${p.selection}</td><td>${p.odd||""}</td><td>${p.note||""}</td></tr>`).join("")}</table>`:"<p class='sub'>None</p>";
+  const {slips}=await api("/api/admin/slips");
+  document.getElementById("slipTable").innerHTML=slips.length?`<table class="table"><tr><th>User</th><th>When</th><th>File</th><th>Fixtures</th></tr>${slips.map(s=>`<tr><td>${s.user_name||""}<br><small>${s.user_email||""}</small></td><td>${new Date(s.created_at).toLocaleString()}</td><td>${s.image_name||"—"}</td><td>${(s.fixtures||[]).map(f=>f.home+" vs "+f.away).join("<br>")}</td></tr>`).join("")}</table>`:"<p class='sub'>None</p>";
+  const s=me.settings;
+  document.getElementById("cTicker").value=(s.ticker||[]).join("\n");
+  document.getElementById("cReviews").value=JSON.stringify(s.testimonials||[],null,2);
+  document.getElementById("cWin").value=s.stats.winners;
+  document.getElementById("cTot").value=s.stats.totalWon;
+  document.getElementById("cRate").value=s.stats.winRateLabel;
+  document.getElementById("sName").value=s.siteName;
+  document.getElementById("sTag").value=s.tagline;
+  document.getElementById("sSup").value=s.supportLink;
+  document.getElementById("sGhs").value=s.registrationFeeGHS;
+  document.getElementById("sNgn").value=s.registrationFeeNGN;
+  document.getElementById("sFee").value=s.requireFee?"yes":"no";
+  document.getElementById("sAppr").value=s.requireApproval?"yes":"no";
+  document.getElementById("sMaint").value=s.maintenance?"yes":"no";
+  document.getElementById("sDisc").value=s.disclaimer;
+}
+window.act=async(id,action)=>{ await api("/api/admin/users/"+id+"/action",{method:"POST",body:{action}}); refresh(); };
+document.getElementById("pub").onclick=async()=>{
+  await api("/api/admin/picks",{method:"POST",body:{
+    match:tMatch.value,selection:tSel.value,odd:tOdd.value,note:tNote.value
+  }}); refresh();
+};
+document.getElementById("saveContent").onclick=async()=>{
+  let testimonials; try{testimonials=JSON.parse(document.getElementById("cReviews").value);}catch{alert("Bad JSON");return;}
+  await api("/api/admin/content",{method:"POST",body:{
+    ticker:document.getElementById("cTicker").value.split("\n").map(s=>s.trim()).filter(Boolean),
+    testimonials,
+    stats:{winners:Number(cWin.value||0),totalWon:Number(cTot.value||0),winRateLabel:cRate.value}
+  }}); alert("Saved");
+};
+document.getElementById("saveSet").onclick=async()=>{
+  await api("/api/admin/settings",{method:"POST",body:{
+    siteName:sName.value,tagline:sTag.value,supportLink:sSup.value,
+    registrationFeeGHS:Number(sGhs.value),registrationFeeNGN:Number(sNgn.value),
+    requireFee:sFee.value==="yes",requireApproval:sAppr.value==="yes",maintenance:sMaint.value==="yes",
+    disclaimer:sDisc.value
+  }}); alert("Saved");
+};
+document.getElementById("out").onclick=async()=>{ await api("/api/logout",{method:"POST"}); location.href="/"; };
+refresh();
+</script>
+</body></html>

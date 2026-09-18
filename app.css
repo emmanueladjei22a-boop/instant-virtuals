@@ -104,6 +104,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .dropzone { border: 1.5px dashed rgba(255,122,24,.45); border-radius: 16px; padding: 28px 12px; text-align: center; color: var(--muted); }
 .warn { background: #1b0f0a; border: 1px solid rgba(255,80,0,.35); border-radius: 14px; padding: 14px; margin: 14px 0; font-size: 13px; color: #f3d2c2; }
 .warn b { color: #ff6a3d; }
+.pick { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #2a221c; }
+.pick-out { text-align:right; color:var(--orange); font-weight:800; }
+.pick-out small { display:block; color:var(--muted); font-weight:700; }
 @media (min-width: 860px) {
   .steps, .reviews { grid-template-columns: 1fr 1fr; }
   .grid-2 { grid-template-columns: 1.15fr .85fr; }

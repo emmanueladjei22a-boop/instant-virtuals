@@ -115,31 +115,3 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .side { display: block; height: 100vh; position: sticky; top: 0; border-right: 1px solid rgba(255,255,255,.06); border-bottom: 0; }
   .side a, .side button.linkish { display: flex; width: 100%; margin: 0 0 6px; border-radius: 10px; }
 }
-.desk-body { background:#050303; }
-.desk-top { position:sticky; top:0; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:rgba(5,3,3,.9); backdrop-filter:blur(12px); border-bottom:1px solid rgba(255,122,24,.2); }
-.desk-actions { display:flex; gap:6px; }
-.pill-link { background:#16100c; border:1px solid rgba(255,255,255,.08); border-radius:999px; padding:8px 12px; font-size:12px; font-weight:800; color:var(--text); }
-.desk { width:min(560px, calc(100% - 24px)); margin:0 auto; padding:18px 0 80px; }
-.desk-hi { font-size:28px; font-weight:800; letter-spacing:-1px; }
-.desk-sub { color:var(--orange); font-weight:700; margin:0 0 16px; }
-.desk-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
-.desk-kpis div { background:#120c09; border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:12px 10px; }
-.desk-kpis small { display:block; color:var(--orange); font-size:10px; font-weight:800; letter-spacing:.8px; }
-.desk-kpis b { font-size:16px; }
-.desk-card { background:linear-gradient(180deg,#17110d,#0c0907); border:1px solid rgba(255,255,255,.07); border-radius:22px; padding:18px; margin:0 0 14px; }
-.desk-card.glow { border-color:rgba(255,122,24,.35); box-shadow:0 0 40px rgba(255,80,0,.12); }
-.desk-label { color:var(--orange); font-size:11px; font-weight:800; letter-spacing:1px; margin-bottom:6px; }
-.desk-card h2 { font-size:22px; margin:0 0 8px; }
-.desk-card p { color:var(--muted); margin-bottom:12px; }
-.dropzone.fat { padding:36px 12px; margin-bottom:12px; display:block; }
-.empty { color:var(--dim); }
-.ticket-row { background:#100c0a; border-radius:14px; padding:12px; margin:8px 0; }
-.ticket-row .teams { font-weight:800; }
-.ticket-row .teams span { color:var(--dim); font-weight:600; }
-.ticket-row .odds { color:var(--muted); font-size:13px; margin:4px 0; }
-.ticket-row .lean { color:var(--orange); font-weight:800; }
-.ticket-row .lean em { color:#86efac; font-style:normal; }
-.ticket-mini { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid #2a221c; color:var(--muted); font-size:13px; }
-.barline { display:grid; grid-template-columns:64px 1fr 40px; align-items:center; gap:8px; margin:6px 0; font-size:12px; color:var(--muted); }
-.barline i { display:block; height:8px; background:linear-gradient(90deg,#ff8a1f,#ff4d00); border-radius:99px; }
-.barline b { color:var(--text); text-align:right; }

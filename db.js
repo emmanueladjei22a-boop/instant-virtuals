@@ -57,13 +57,40 @@ function empty() {
   };
 }
 
+function syncAdmin(data) {
+  const email = String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase();
+  const password = String(process.env.ADMIN_PASSWORD || "ChangeMeNow!2026");
+  let admin = data.users.find((u) => u.id === "admin" || u.role === "admin");
+  if (!admin) {
+    admin = {
+      id: "admin",
+      name: "Site Admin",
+      phone: "",
+      country: "GH",
+      role: "admin",
+      status: "active",
+      paid: true,
+      credits: 999,
+      created_at: Date.now(),
+    };
+    data.users.unshift(admin);
+  }
+  admin.email = email;
+  admin.password_hash = bcrypt.hashSync(password, 10);
+  admin.role = "admin";
+  admin.status = "active";
+  admin.paid = true;
+  return data;
+}
+
 function load() {
   if (!fs.existsSync(FILE)) {
-    const data = empty();
+    const data = syncAdmin(empty());
     save(data);
     return data;
   }
-  return JSON.parse(fs.readFileSync(FILE, "utf8"));
+  const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
+  return syncAdmin(data);
 }
 
 function save(data) {

@@ -50,8 +50,10 @@
     (async () => {
       const { user, settings } = await api("/api/me").catch(() => ({ user: null }));
       if (!user) return location.replace("/login.html?next="+encodeURIComponent(location.pathname+location.search));
-      const buyDiamonds = new URLSearchParams(location.search).get("buy") === "diamonds";
+      const q = new URLSearchParams(location.search);
+      const buyDiamonds = q.get("buy") === "diamonds";
       window.__payType = buyDiamonds ? "diamonds" : "registration";
+      window.__pack = (q.get("pack") || "regular").toLowerCase();
       if (!buyDiamonds) {
         if (user.role === "admin" || user.paid) return location.replace("/app.html");
         if (user.paymentStatus === "proof_sent") return location.replace("/pending.html");
@@ -61,8 +63,14 @@
       document.getElementById("net").textContent = ng ? (settings.ngBank || "BANK") : (settings.momoNetwork || "TELECEL");
       document.getElementById("num").textContent = settings.momoNumber || "SET IN ADMIN";
       document.getElementById("acc").textContent = settings.momoName || "SET IN ADMIN";
+      const packs = {
+        regular: { price: settings.packRegularPrice || 20, qty: settings.packRegularQty || 10, name: "REGULAR" },
+        vip: { price: settings.packVipPrice || 50, qty: settings.packVipQty || 30, name: "VIP" },
+        vvip: { price: settings.packVvipPrice || 100, qty: settings.packVvipQty || 80, name: "VVIP" },
+      };
+      const pk = packs[window.__pack] || packs.regular;
       document.getElementById("amt").textContent = buyDiamonds
-        ? ("GH₵" + (settings.diamondPriceGHS || 20) + " · " + (settings.diamondQty || 10) + " ◆")
+        ? ("GH₵" + pk.price + " · " + pk.qty + " ◆ " + pk.name)
         : (ng ? ("₦" + settings.registrationFeeNGN) : ("GH₵" + settings.registrationFeeGHS));
       const copy = (id) => navigator.clipboard.writeText(document.getElementById(id).textContent);
       document.getElementById("cNum").onclick = () => copy("num");
@@ -113,7 +121,7 @@
       try {
         await api("/api/payment-proof", { method: "POST", body: {
           txId: fd.get("txId"), senderName: fd.get("senderName"), payerNumber: fd.get("payerNumber"),
-          screenshotName, screenshot: screenshot.slice(0, 800000), type: window.__payType || "registration"
+          screenshotName, screenshot: screenshot.slice(0, 800000), type: window.__payType || "registration", pack: window.__pack || "regular"
         }});
         location.href = window.__payType === "diamonds" ? "/pending.html?diamonds=1" : "/pending.html";
       } catch (err) {

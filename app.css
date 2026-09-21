@@ -215,3 +215,6 @@ body.flow-bg .nav { background: transparent; border-bottom: 0; }
 .read-title{color:#3ea7ff;font-weight:800;font-size:20px;margin:0}
 .read-sub{color:#ff4d2e;font-size:11px;letter-spacing:1px;font-weight:800}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-green { background:#1f9d55; color:#fff; }
+.btn-blue { background:#2f6bff; color:#fff; }

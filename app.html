@@ -16,6 +16,7 @@
   <div class="desk-actions">
     <a id="adminLink" class="hidden pill-link" href="/admin.html">Admin</a>
     <a class="pill-link" id="support" target="_blank">Support</a>
+    <b id="topBal">0 ◆</b>
     <button class="pill-link" id="out">Out</button>
   </div>
 </header>
@@ -24,7 +25,11 @@
   <h1 class="welcome-name" id="hello">MEMBER</h1>
   <p class="desk-sub">Choose a game and let AI predict for you.</p>
   <div class="notice hidden" id="gate"></div>
-  <a class="pkg-btn" href="/packages.html">BUY PACKAGES</a>
+  <div class="desk-card glow" style="margin:10px 0">
+    <div class="desk-label">YOUR BALANCE</div>
+    <h2 id="bal">0 ◆</h2>
+    <a class="pkg-btn" href="/packages.html" style="margin:8px 0 0">BUY PACKAGES</a>
+  </div>
   <div class="desk-kpis live-kpis">
     <div><small>WINNERS</small><b id="kWin">0</b></div>
     <div><small>TOTAL WON</small><b id="kTot">0</b></div>
@@ -66,6 +71,8 @@
   document.getElementById("support").href=settings.supportLink||"#";
   document.getElementById("efoot").href=settings.supportLink||"#";
   if(me.role==="admin") document.getElementById("adminLink").classList.remove("hidden");
+  document.getElementById("bal").textContent=(me.credits||0)+" ◆";
+  document.getElementById("topBal").textContent=(me.credits||0)+" ◆";
   document.getElementById("kWin").textContent=(settings.stats&&settings.stats.winners)||0;
   document.getElementById("kTot").textContent=(settings.stats&&settings.stats.totalWon)||0;
   document.getElementById("kRate").textContent=(settings.stats&&settings.stats.winRateLabel)||"Top";

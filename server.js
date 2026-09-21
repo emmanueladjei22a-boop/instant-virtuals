@@ -60,6 +60,12 @@ function publicSettings() {
     registrationFeeNGN: d.settings.registrationFeeNGN,
     diamondPriceGHS: d.settings.diamondPriceGHS || 20,
     diamondQty: d.settings.diamondQty || 10,
+    packRegularPrice: d.settings.packRegularPrice || 20,
+    packRegularQty: d.settings.packRegularQty || 10,
+    packVipPrice: d.settings.packVipPrice || 50,
+    packVipQty: d.settings.packVipQty || 30,
+    packVvipPrice: d.settings.packVvipPrice || 100,
+    packVvipQty: d.settings.packVvipQty || 80,
     momoNetwork: d.settings.momoNetwork,
     momoNumber: d.settings.momoNumber,
     momoName: d.settings.momoName,
@@ -260,7 +266,7 @@ app.post("/api/country", auth, (req, res) => {
 });
 
 app.post("/api/payment-proof", auth, (req, res) => {
-  const { txId, senderName, payerNumber, screenshotName, screenshot, type } = req.body || {};
+  const { txId, senderName, payerNumber, screenshotName, screenshot, type, pack } = req.body || {};
   if (!senderName || !payerNumber) return res.status(400).json({ error: "Sender name and number are required" });
   const kind = type === "diamonds" ? "diamonds" : "registration";
   storeUpdate((d) => {
@@ -271,14 +277,24 @@ app.post("/api/payment-proof", auth, (req, res) => {
       u.status = "pending";
     } else {
       u.diamondProof = "proof_sent";
+      u.pendingPack = pack || "regular";
     }
+    const packKey = (pack || "regular").toLowerCase();
+    const packMap = {
+      regular: { price: d.settings.packRegularPrice || 20, qty: d.settings.packRegularQty || 10 },
+      vip: { price: d.settings.packVipPrice || 50, qty: d.settings.packVipQty || 30 },
+      vvip: { price: d.settings.packVvipPrice || 100, qty: d.settings.packVvipQty || 80 },
+    };
+    const chosen = packMap[packKey] || packMap.regular;
     d.payments.unshift({
       id: store.uid("pay"),
       user_id: u.id,
       user_name: u.name,
       user_email: u.email,
+      pack: kind === "diamonds" ? packKey : "",
+      qty: kind === "diamonds" ? chosen.qty : 0,
       amount: kind === "diamonds"
-        ? (d.settings.diamondPriceGHS || 20)
+        ? chosen.price
         : (u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS),
       currency: u.country === "NG" && kind !== "diamonds" ? "NGN" : "GHS",
       type: kind,
@@ -369,7 +385,9 @@ app.post("/api/admin/users/:id/action", auth, adminOnly, (req, res) => {
     }
     if (action === "credit") u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
     if (action === "diamonds") {
-      u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
+      const pending = d.payments.find((p) => p.user_id === u.id && p.type === "diamonds" && p.status !== "paid");
+      const add = (pending && pending.qty) || d.settings.packRegularQty || d.settings.diamondQty || 10;
+      u.credits = (u.credits || 0) + Number(add);
       u.diamondProof = "paid";
       d.payments.forEach((p) => {
         if (p.user_id === u.id && p.type === "diamonds" && p.status !== "paid") p.status = "paid";
@@ -426,6 +444,9 @@ app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
     if (s.registrationFeeNGN !== undefined) d.settings.registrationFeeNGN = Number(s.registrationFeeNGN);
     if (s.diamondPriceGHS !== undefined) d.settings.diamondPriceGHS = Number(s.diamondPriceGHS);
     if (s.diamondQty !== undefined) d.settings.diamondQty = Number(s.diamondQty);
+    ["packRegularPrice","packRegularQty","packVipPrice","packVipQty","packVvipPrice","packVvipQty"].forEach((k)=>{
+      if (s[k] !== undefined) d.settings[k] = Number(s[k]);
+    });
     ["momoNetwork", "momoNumber", "momoName", "telegramPay", "ngBank"].forEach((k) => {
       if (s[k] !== undefined) d.settings[k] = s[k];
     });

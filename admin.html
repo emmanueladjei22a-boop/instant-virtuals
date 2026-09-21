@@ -62,8 +62,12 @@
   </div></section>
   <section id="settings" class="panel hidden"><div class="desk-card glow">
     <div class="desk-label">DIAMONDS + PAYOUT</div><h2>Settings</h2>
-    <div class="field"><label>Diamond pack price GHS</label><input id="sDprice" type="number" placeholder="20"/></div>
-    <div class="field"><label>Diamonds in one pack</label><input id="sDqty" type="number" placeholder="10"/></div>
+    <div class="field"><label>Regular price GHS</label><input id="sRegP" type="number" placeholder="20"/></div>
+    <div class="field"><label>Regular diamonds</label><input id="sRegQ" type="number" placeholder="10"/></div>
+    <div class="field"><label>VIP price GHS</label><input id="sVipP" type="number" placeholder="50"/></div>
+    <div class="field"><label>VIP diamonds</label><input id="sVipQ" type="number" placeholder="30"/></div>
+    <div class="field"><label>VVIP price GHS</label><input id="sVvipP" type="number" placeholder="100"/></div>
+    <div class="field"><label>VVIP diamonds</label><input id="sVvipQ" type="number" placeholder="80"/></div>
     <div class="field"><label>Site name</label><input id="sName"/></div>
     <div class="field"><label>Tagline</label><input id="sTag"/></div>
     <div class="field"><label>Support link</label><input id="sSup"/></div>
@@ -96,7 +100,7 @@ async function refresh(){
   document.getElementById("userTable").innerHTML=`<table class="table"><tr><th>Name</th><th>Email</th><th>Status</th><th>Paid</th><th>Credits</th><th></th></tr>${
     users.map(u=>`<tr><td>${u.name}<br><small>${u.role}</small></td><td>${u.email}<br><small>${u.phone||""}</small></td><td><span class="badge ${u.status==="active"?"ok":"wait"}">${u.status}</span></td><td>${u.paid?"yes":"no"}</td><td>${u.credits}</td><td>${u.role==="admin"?"—":`
       <button class="btn btn-green" onclick="act('${u.id}','approve')">Approve</button>
-      <button class="btn btn-line" onclick="act('${u.id}','paid')">Mark paid</button>
+      <button class="btn btn-green" onclick="act('${u.id}','paid')">Mark paid</button>
       <button class="btn btn-line" onclick="act('${u.id}','credit')">+5</button>
       <button class="btn btn-danger" onclick="act('${u.id}','block')">Block</button>`}</td></tr>`).join("")}</table>`;
   const {picks}=await api("/api/picks");
@@ -115,18 +119,22 @@ async function refresh(){
   document.getElementById("sGhs").value=s.registrationFeeGHS;
   document.getElementById("sGhsShow").value=s.registrationFeeDisplayGHS||50;
   document.getElementById("sNgn").value=s.registrationFeeNGN;
-  document.getElementById("sDprice").value=s.diamondPriceGHS||20;
-  document.getElementById("sDqty").value=s.diamondQty||10;
+  document.getElementById("sRegP").value=s.packRegularPrice||20;
+  document.getElementById("sRegQ").value=s.packRegularQty||10;
+  document.getElementById("sVipP").value=s.packVipPrice||50;
+  document.getElementById("sVipQ").value=s.packVipQty||30;
+  document.getElementById("sVvipP").value=s.packVvipPrice||100;
+  document.getElementById("sVvipQ").value=s.packVvipQty||80;
   document.getElementById("sNet").value=s.momoNetwork||"";
   document.getElementById("sNum").value=s.momoNumber||"";
   document.getElementById("sAcc").value=s.momoName||"";
   document.getElementById("sTg").value=s.telegramPay||"";
   const pays=(await api("/api/admin/payments").catch(()=>({payments:[]}))).payments||[];
-  const payHtml=pays.length?pays.map(p=>`<div class="pred-card"><b>${p.user_name||""}</b> · ${p.type||"registration"}<br><small>${p.user_email||""}</small><br>${p.currency} ${p.amount} · ${p.status}<br>From ${p.payerNumber||"—"} ${p.senderName||""}<br>${p.screenshot?`<img src="${p.screenshot}" style="width:100%;max-height:240px;object-fit:contain;border-radius:10px;margin:8px 0" alt="proof"/>`:"<small>No photo</small>"}<br>${p.user_id&&p.status!=="paid"?(p.type==="diamonds"?`<button class="btn btn-green" style="margin-top:8px" onclick="act('${p.user_id}','diamonds')">Give diamonds</button>`:`<button class="btn btn-green" style="margin-top:8px" onclick="act('${p.user_id}','paid')">Mark paid</button>`):""}</div>`).join(""):"<p class='sub'>No proofs yet.</p>";
+  const payHtml=pays.length?pays.map(p=>`<div class="pred-card"><b>${p.user_name||""}</b> · ${(p.pack||p.type||"registration").toUpperCase()}<br><small>${p.user_email||""}</small><br>${p.currency} ${p.amount} · ${p.status}${p.qty?" · +"+p.qty+" ◆":""}<br>From ${p.payerNumber||"—"} ${p.senderName||""}<br>${p.screenshot?`<img src="${p.screenshot}" style="width:100%;max-height:240px;object-fit:contain;border-radius:10px;margin:8px 0" alt="proof"/><a class="btn btn-blue block" href="${p.screenshot}" target="_blank" style="margin-top:8px">Proof</a>`:"<small>No photo</small>"}${p.user_id&&p.status!=="paid"?(p.type==="diamonds"?`<button class="btn btn-green block" style="margin-top:8px" onclick="act('${p.user_id}','diamonds')">Give diamonds</button>`:`<button class="btn btn-green block" style="margin-top:8px" onclick="act('${p.user_id}','paid')">Mark paid</button>`):""}</div>`).join(""):"<p class='sub'>No proofs yet.</p>";
   document.getElementById("payTable").innerHTML=payHtml;
   const hp=document.getElementById("homePays"); if(hp) hp.innerHTML=payHtml;
   const hu=document.getElementById("homeUsers");
-  if(hu) hu.innerHTML=users.map(u=>`<div class="pred-card"><b>${u.name}</b> · ${u.email}<br>paid: ${u.paid?"yes":"no"} · ${u.status}<br>${u.role==="admin"?"":`<button class="btn btn-green" onclick="act('${u.id}','paid')">Mark paid</button> <button class="btn btn-line" onclick="act('${u.id}','approve')">Approve</button>`}</div>`).join("");
+  if(hu) hu.innerHTML=users.map(u=>`<div class="pred-card"><b>${u.name}</b> · ${u.email}<br>paid: ${u.paid?"yes":"no"} · ${u.status}<br>${u.role==="admin"?"":`<button class="btn btn-green" class="btn btn-green" onclick="act('${u.id}','paid')">Mark paid</button> <button class="btn btn-line" onclick="act('${u.id}','approve')">Approve</button>`}</div>`).join("");
   document.getElementById("sFee").value=s.requireFee?"yes":"no";
   document.getElementById("sAppr").value=s.requireApproval?"yes":"no";
   document.getElementById("sMaint").value=s.maintenance?"yes":"no";
@@ -151,7 +159,9 @@ document.getElementById("saveSet").onclick=async()=>{
   await api("/api/admin/settings",{method:"POST",body:{
     siteName:sName.value,tagline:sTag.value,supportLink:sSup.value,
     registrationFeeGHS:Number(sGhs.value),registrationFeeDisplayGHS:Number(sGhsShow.value),registrationFeeNGN:Number(sNgn.value),
-    diamondPriceGHS:Number(sDprice.value),diamondQty:Number(sDqty.value),
+    packRegularPrice:Number(sRegP.value),packRegularQty:Number(sRegQ.value),
+    packVipPrice:Number(sVipP.value),packVipQty:Number(sVipQ.value),
+    packVvipPrice:Number(sVvipP.value),packVvipQty:Number(sVvipQ.value),
     momoNetwork:sNet.value,momoNumber:sNum.value,momoName:sAcc.value,telegramPay:sTg.value,
     requireFee:sFee.value==="yes",requireApproval:sAppr.value==="yes",maintenance:sMaint.value==="yes",
     disclaimer:sDisc.value

@@ -29,6 +29,15 @@
       <div><small>PENDING</small><b id="oPending">0</b></div>
       <div><small>SLIPS</small><b id="oSlips">0</b></div>
     </div>
+    <div class="desk-card glow" style="margin-top:12px">
+      <div class="desk-label">APPROVE PAYMENTS</div>
+      <h2>Waiting</h2>
+      <div id="homePays"><p class="sub">No proofs yet.</p></div>
+    </div>
+    <div class="desk-card" style="margin-top:12px">
+      <div class="desk-label">USERS</div>
+      <div id="homeUsers"></div>
+    </div>
   </section>
   <section id="users" class="panel hidden"><div class="desk-card"><div class="desk-label">MEMBERS</div><h2>Users</h2><div id="userTable"></div></div></section>
   <section id="pays" class="panel hidden"><div class="desk-card glow"><div class="desk-label">MONEY</div><h2>Payment proofs</h2><div id="payTable"></div></div></section>
@@ -109,7 +118,11 @@ async function refresh(){
   document.getElementById("sAcc").value=s.momoName||"";
   document.getElementById("sTg").value=s.telegramPay||"";
   const pays=(await api("/api/admin/payments").catch(()=>({payments:[]}))).payments||[];
-  document.getElementById("payTable").innerHTML=pays.length?`<table class="table"><tr><th>User</th><th>Amount</th><th>Sender</th><th>From</th><th>Tx</th><th></th></tr>${pays.map(p=>`<tr><td>${p.user_name||""}<br><small>${p.user_email||""}</small></td><td>${p.currency} ${p.amount}<br><small>${p.status}</small></td><td>${p.senderName||""}</td><td>${p.payerNumber||""}</td><td>${p.txId||"—"}</td><td>${p.user_id?`<button class="btn btn-green" onclick="act('${p.user_id}','paid')">Mark paid</button>`:""}</td></tr>`).join("")}</table>`:"<p class='sub'>No proofs yet.</p>";
+  const payHtml=pays.length?pays.map(p=>`<div class="pred-card"><b>${p.user_name||""}</b><br><small>${p.user_email||""}</small><br>${p.currency} ${p.amount} · ${p.status}<br>From ${p.payerNumber||"—"} ${p.senderName||""}<br>${p.user_id&&p.status!=="paid"?`<button class="btn btn-green" style="margin-top:8px" onclick="act('${p.user_id}','paid')">Mark paid</button>`:""}</div>`).join(""):"<p class='sub'>No proofs yet.</p>";
+  document.getElementById("payTable").innerHTML=payHtml;
+  const hp=document.getElementById("homePays"); if(hp) hp.innerHTML=payHtml;
+  const hu=document.getElementById("homeUsers");
+  if(hu) hu.innerHTML=users.map(u=>`<div class="pred-card"><b>${u.name}</b> · ${u.email}<br>paid: ${u.paid?"yes":"no"} · ${u.status}<br>${u.role==="admin"?"":`<button class="btn btn-green" onclick="act('${u.id}','paid')">Mark paid</button> <button class="btn btn-line" onclick="act('${u.id}','approve')">Approve</button>`}</div>`).join("");
   document.getElementById("sFee").value=s.requireFee?"yes":"no";
   document.getElementById("sAppr").value=s.requireApproval?"yes":"no";
   document.getElementById("sMaint").value=s.maintenance?"yes":"no";

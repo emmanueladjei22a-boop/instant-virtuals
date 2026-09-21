@@ -74,7 +74,7 @@ function publicSettings() {
     requireFee: d.settings.requireFee,
     requireApproval: d.settings.requireApproval,
     maintenance: d.settings.maintenance,
-    disclaimer: d.settings.disclaimer,
+    disclaimer: String(d.settings.disclaimer||"").replace("They are a guaranteed","They are not a guaranteed"),
     stats: d.settings.stats,
     ticker: d.ticker,
     testimonials: d.testimonials,

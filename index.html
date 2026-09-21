@@ -10,7 +10,10 @@
   <nav class="nav">
     <div class="wrap nav-inner">
       <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
-      <div class="nav-actions" id="nav"></div>
+      <div class="nav-actions" id="nav">
+        <a class="btn btn-ghost" href="/login.html">Log In</a>
+        <a class="btn btn-orange" href="/signup.html">Sign Up</a>
+      </div>
     </div>
   </nav>
   <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
@@ -59,15 +62,18 @@
   <script src="/api.js"></script>
   <script>
     (async () => {
-      const { settings } = await api("/api/public");
-      document.getElementById("tagline").textContent = settings.tagline;
-      document.getElementById("disclaimer").textContent = settings.disclaimer;
-      document.getElementById("statWinners").textContent = settings.stats.winners;
-      document.getElementById("statWon").textContent = "GHS " + settings.stats.totalWon;
-      document.getElementById("statRate").textContent = settings.stats.winRateLabel;
-      const tick = settings.ticker.concat(settings.ticker);
+      let settings = {};
+      try { settings = (await api("/api/public")).settings || {}; } catch {}
+      document.getElementById("tagline").textContent = settings.tagline || "SportyBet · Instant Football";
+      document.getElementById("disclaimer").textContent = settings.disclaimer || "Picks are unofficial and not guaranteed. 18+ only. Gamble responsibly.";
+      const st = settings.stats || {};
+      document.getElementById("statWinners").textContent = st.winners || 0;
+      document.getElementById("statWon").textContent = "GHS " + (st.totalWon || 0);
+      document.getElementById("statRate").textContent = st.winRateLabel || "Unverified";
+      const tick = (settings.ticker && settings.ticker.length ? settings.ticker : ["Instant Football predictions","Spin the Bottle signals"]).concat(settings.ticker || []);
       document.getElementById("ticker").innerHTML = tick.map(t => `<span>${t}</span>`).join("");
-      document.getElementById("reviews").innerHTML = settings.testimonials.map(t =>
+      const revs = settings.testimonials && settings.testimonials.length ? settings.testimonials : [{name:"Member",city:"Accra",text:"Sign up, pay, then use diamonds for Instant Football and Spin."}];
+      document.getElementById("reviews").innerHTML = revs.map(t =>
         `<article class="card"><div class="stars">★★★★★</div><p>“${t.text}”</p><div class="who">${t.name} · ${t.city}</div></article>`
       ).join("");
       let me = null;

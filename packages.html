@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Buy diamonds</title>
+<link rel="stylesheet" href="/app.css"/>
+</head>
+<body class="desk-body">
+<header class="desk-top">
+  <a class="brand" href="/app.html">‹ Packages</a>
+</header>
+<main class="desk">
+  <p class="desk-hi">Buy diamonds</p>
+  <p class="desk-sub">Registration is separate. This pack only adds diamonds.</p>
+  <div class="desk-card glow">
+    <div class="desk-label">DIAMOND PACK</div>
+    <h2 id="qty">10 ◆</h2>
+    <p id="price">GH₵20</p>
+    <a class="btn btn-orange block" href="/pay.html?buy=diamonds">BUY NOW</a>
+  </div>
+</main>
+<script src="/api.js"></script>
+<script>
+(async()=>{
+  const d=await api("/api/me").catch(()=>null);
+  if(!d) return location.replace("/login.html");
+  const s=d.settings;
+  document.getElementById("qty").textContent=(s.diamondQty||10)+" ◆";
+  document.getElementById("price").textContent="GH₵"+(s.diamondPriceGHS||20);
+})();
+</script>
+</body>
+</html>

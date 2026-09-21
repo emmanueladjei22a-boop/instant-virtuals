@@ -46,6 +46,8 @@ function publicSettings() {
     registrationFeeGHS: d.settings.registrationFeeGHS,
     registrationFeeDisplayGHS: d.settings.registrationFeeDisplayGHS || 50,
     registrationFeeNGN: d.settings.registrationFeeNGN,
+    diamondPriceGHS: d.settings.diamondPriceGHS || 20,
+    diamondQty: d.settings.diamondQty || 10,
     momoNetwork: d.settings.momoNetwork,
     momoNumber: d.settings.momoNumber,
     momoName: d.settings.momoName,
@@ -246,21 +248,28 @@ app.post("/api/country", auth, (req, res) => {
 });
 
 app.post("/api/payment-proof", auth, (req, res) => {
-  const { txId, senderName, payerNumber, screenshotName, screenshot } = req.body || {};
+  const { txId, senderName, payerNumber, screenshotName, screenshot, type } = req.body || {};
   if (!senderName || !payerNumber) return res.status(400).json({ error: "Sender name and number are required" });
+  const kind = type === "diamonds" ? "diamonds" : "registration";
   storeUpdate((d) => {
     const u = d.users.find((x) => x.id === req.auth.id);
     if (!u) return;
-    u.paymentStatus = "proof_sent";
-    u.status = "pending";
+    if (kind === "registration") {
+      u.paymentStatus = "proof_sent";
+      u.status = "pending";
+    } else {
+      u.diamondProof = "proof_sent";
+    }
     d.payments.unshift({
       id: store.uid("pay"),
       user_id: u.id,
       user_name: u.name,
       user_email: u.email,
-      amount: u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS,
-      currency: u.country === "NG" ? "NGN" : "GHS",
-      type: "registration",
+      amount: kind === "diamonds"
+        ? (d.settings.diamondPriceGHS || 20)
+        : (u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS),
+      currency: u.country === "NG" && kind !== "diamonds" ? "NGN" : "GHS",
+      type: kind,
       status: "proof_sent",
       txId: txId || "",
       senderName,
@@ -342,12 +351,18 @@ app.post("/api/admin/users/:id/action", auth, adminOnly, (req, res) => {
       u.paid = true;
       u.paymentStatus = "paid";
       u.status = "active";
-      if ((u.credits || 0) < 20) u.credits = 20;
       d.payments.forEach((p) => {
         if (p.user_id === u.id && p.status !== "paid") p.status = "paid";
       });
     }
-    if (action === "credit") u.credits = (u.credits || 0) + 5;
+    if (action === "credit") u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
+    if (action === "diamonds") {
+      u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
+      u.diamondProof = "paid";
+      d.payments.forEach((p) => {
+        if (p.user_id === u.id && p.type === "diamonds" && p.status !== "paid") p.status = "paid";
+      });
+    }
   });
   res.json({ ok: true });
 });
@@ -397,6 +412,8 @@ app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
     if (s.registrationFeeGHS !== undefined) d.settings.registrationFeeGHS = Number(s.registrationFeeGHS);
     if (s.registrationFeeDisplayGHS !== undefined) d.settings.registrationFeeDisplayGHS = Number(s.registrationFeeDisplayGHS);
     if (s.registrationFeeNGN !== undefined) d.settings.registrationFeeNGN = Number(s.registrationFeeNGN);
+    if (s.diamondPriceGHS !== undefined) d.settings.diamondPriceGHS = Number(s.diamondPriceGHS);
+    if (s.diamondQty !== undefined) d.settings.diamondQty = Number(s.diamondQty);
     ["momoNetwork", "momoNumber", "momoName", "telegramPay", "ngBank"].forEach((k) => {
       if (s[k] !== undefined) d.settings[k] = s[k];
     });

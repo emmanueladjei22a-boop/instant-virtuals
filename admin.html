@@ -68,6 +68,8 @@
     <div class="field"><label>Fee GHS (exact send amount)</label><input id="sGhs" type="number"/></div>
     <div class="field"><label>Fee GHS shown on country list</label><input id="sGhsShow" type="number"/></div>
     <div class="field"><label>Fee NGN</label><input id="sNgn" type="number"/></div>
+    <div class="field"><label>Diamond pack price GHS</label><input id="sDprice" type="number"/></div>
+    <div class="field"><label>Diamonds in one pack</label><input id="sDqty" type="number"/></div>
     <div class="field"><label>MoMo network</label><input id="sNet"/></div>
     <div class="field"><label>Your MoMo number</label><input id="sNum"/></div>
     <div class="field"><label>Account name</label><input id="sAcc"/></div>
@@ -113,12 +115,14 @@ async function refresh(){
   document.getElementById("sGhs").value=s.registrationFeeGHS;
   document.getElementById("sGhsShow").value=s.registrationFeeDisplayGHS||50;
   document.getElementById("sNgn").value=s.registrationFeeNGN;
+  document.getElementById("sDprice").value=s.diamondPriceGHS||20;
+  document.getElementById("sDqty").value=s.diamondQty||10;
   document.getElementById("sNet").value=s.momoNetwork||"";
   document.getElementById("sNum").value=s.momoNumber||"";
   document.getElementById("sAcc").value=s.momoName||"";
   document.getElementById("sTg").value=s.telegramPay||"";
   const pays=(await api("/api/admin/payments").catch(()=>({payments:[]}))).payments||[];
-  const payHtml=pays.length?pays.map(p=>`<div class="pred-card"><b>${p.user_name||""}</b><br><small>${p.user_email||""}</small><br>${p.currency} ${p.amount} · ${p.status}<br>From ${p.payerNumber||"—"} ${p.senderName||""}<br>${p.user_id&&p.status!=="paid"?`<button class="btn btn-green" style="margin-top:8px" onclick="act('${p.user_id}','paid')">Mark paid</button>`:""}</div>`).join(""):"<p class='sub'>No proofs yet.</p>";
+  const payHtml=pays.length?pays.map(p=>`<div class="pred-card"><b>${p.user_name||""}</b> · ${p.type||"registration"}<br><small>${p.user_email||""}</small><br>${p.currency} ${p.amount} · ${p.status}<br>From ${p.payerNumber||"—"} ${p.senderName||""}<br>${p.screenshot?`<img src="${p.screenshot}" style="width:100%;max-height:240px;object-fit:contain;border-radius:10px;margin:8px 0" alt="proof"/>`:"<small>No photo</small>"}<br>${p.user_id&&p.status!=="paid"?(p.type==="diamonds"?`<button class="btn btn-green" style="margin-top:8px" onclick="act('${p.user_id}','diamonds')">Give diamonds</button>`:`<button class="btn btn-green" style="margin-top:8px" onclick="act('${p.user_id}','paid')">Mark paid</button>`):""}</div>`).join(""):"<p class='sub'>No proofs yet.</p>";
   document.getElementById("payTable").innerHTML=payHtml;
   const hp=document.getElementById("homePays"); if(hp) hp.innerHTML=payHtml;
   const hu=document.getElementById("homeUsers");
@@ -147,6 +151,7 @@ document.getElementById("saveSet").onclick=async()=>{
   await api("/api/admin/settings",{method:"POST",body:{
     siteName:sName.value,tagline:sTag.value,supportLink:sSup.value,
     registrationFeeGHS:Number(sGhs.value),registrationFeeDisplayGHS:Number(sGhsShow.value),registrationFeeNGN:Number(sNgn.value),
+    diamondPriceGHS:Number(sDprice.value),diamondQty:Number(sDqty.value),
     momoNetwork:sNet.value,momoNumber:sNum.value,momoName:sAcc.value,telegramPay:sTg.value,
     requireFee:sFee.value==="yes",requireApproval:sAppr.value==="yes",maintenance:sMaint.value==="yes",
     disclaimer:sDisc.value

@@ -6,7 +6,7 @@
   <title>Pay</title>
   <link rel="stylesheet" href="/app.css" />
 </head>
-<body>
+<body class="flow-bg">
   <nav class="nav"><div class="wrap nav-inner">
     <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
   </div></nav>
@@ -50,42 +50,77 @@
     (async () => {
       const { user, settings } = await api("/api/me").catch(() => ({ user: null }));
       if (!user) return location.replace("/signup.html");
-      if (user.role === "admin" || user.paid) return location.replace("/app.html");
-      if (user.paymentStatus === "proof_sent") return location.replace("/pending.html");
-      const ng = user.country === "NG";
-      document.getElementById("title").innerHTML = ng ? "PAY VIA <span>BANK TRANSFER</span>" : "PAY VIA <span>MOBILE MONEY</span>";
+      const buyDiamonds = new URLSearchParams(location.search).get("buy") === "diamonds";
+      window.__payType = buyDiamonds ? "diamonds" : "registration";
+      if (!buyDiamonds) {
+        if (user.role === "admin" || user.paid) return location.replace("/app.html");
+        if (user.paymentStatus === "proof_sent") return location.replace("/pending.html");
+      }
+      const ng = user.country === "NG" && !buyDiamonds;
+      document.getElementById("title").innerHTML = buyDiamonds ? "BUY <span>DIAMONDS</span>" : (ng ? "PAY VIA <span>BANK TRANSFER</span>" : "PAY VIA <span>MOBILE MONEY</span>");
       document.getElementById("net").textContent = ng ? (settings.ngBank || "BANK") : (settings.momoNetwork || "TELECEL");
       document.getElementById("num").textContent = settings.momoNumber || "SET IN ADMIN";
       document.getElementById("acc").textContent = settings.momoName || "SET IN ADMIN";
-      document.getElementById("amt").textContent = ng ? ("₦" + settings.registrationFeeNGN) : ("GH₵" + settings.registrationFeeGHS);
+      document.getElementById("amt").textContent = buyDiamonds
+        ? ("GH₵" + (settings.diamondPriceGHS || 20) + " · " + (settings.diamondQty || 10) + " ◆")
+        : (ng ? ("₦" + settings.registrationFeeNGN) : ("GH₵" + settings.registrationFeeGHS));
       const copy = (id) => navigator.clipboard.writeText(document.getElementById(id).textContent);
       document.getElementById("cNum").onclick = () => copy("num");
       document.getElementById("cAmt").onclick = () => copy("amt");
     })();
-    document.getElementById("shot").onchange = (e) => {
+    function shrink(file) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          const max = 900;
+          let w = img.width, h = img.height;
+          if (w > max) { h = Math.round(h * max / w); w = max; }
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          c.getContext("2d").drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL("image/jpeg", 0.55));
+        };
+        img.onerror = () => resolve("");
+        img.src = url;
+      });
+    }
+    document.getElementById("shot").onchange = async (e) => {
       const f = e.target.files[0];
       if (!f) return;
       screenshotName = f.name;
-      const reader = new FileReader();
-      reader.onload = () => {
-        screenshot = reader.result;
-        const img = document.getElementById("preview");
-        img.src = screenshot;
-        img.classList.remove("hidden");
-      };
-      reader.readAsDataURL(f);
+      document.getElementById("err").textContent = "Reading photo…";
+      screenshot = await shrink(f);
+      const img = document.getElementById("preview");
+      img.src = screenshot || URL.createObjectURL(f);
+      img.classList.remove("hidden");
+      document.getElementById("err").textContent = screenshot ? "Photo ready." : "Photo added. Submit now.";
     };
     document.getElementById("form").onsubmit = async (e) => {
       e.preventDefault();
-      if (!screenshot) { document.getElementById("err").textContent = "Upload the payment screenshot."; return; }
       const fd = new FormData(e.target);
+      if (!fd.get("senderName") || !fd.get("payerNumber")) {
+        document.getElementById("err").textContent = "Enter sender name and the number you paid from.";
+        return;
+      }
+      if (!screenshotName && !screenshot) {
+        document.getElementById("err").textContent = "Upload the payment screenshot.";
+        return;
+      }
+      const btn = e.target.querySelector("button[type=submit]");
+      btn.disabled = true;
+      btn.textContent = "Submitting…";
       try {
         await api("/api/payment-proof", { method: "POST", body: {
           txId: fd.get("txId"), senderName: fd.get("senderName"), payerNumber: fd.get("payerNumber"),
-          screenshotName, screenshot
+          screenshotName, screenshot: screenshot.slice(0, 800000), type: window.__payType || "registration"
         }});
-        location.href = "/pending.html";
-      } catch (err) { document.getElementById("err").textContent = err.message; }
+        location.href = window.__payType === "diamonds" ? "/pending.html?diamonds=1" : "/pending.html";
+      } catch (err) {
+        document.getElementById("err").textContent = err.message || "Could not submit. Try a smaller photo.";
+        btn.disabled = false;
+        btn.textContent = "SUBMIT PAYMENT PROOF →";
+      }
     };
   </script>
 </body>

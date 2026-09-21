@@ -34,6 +34,8 @@ function empty() {
       registrationFeeGHS: Number(process.env.FEE_GHS || 77),
       registrationFeeDisplayGHS: Number(process.env.FEE_GHS_SHOW || process.env.FEE_GHS || 50),
       registrationFeeNGN: Number(process.env.FEE_NGN || 10000),
+      diamondPriceGHS: Number(process.env.DIAMOND_PRICE || 20),
+      diamondQty: Number(process.env.DIAMOND_QTY || 10),
       requireApproval: true,
       requireFee: true,
       maintenance: false,

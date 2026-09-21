@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Admin</title><link rel="stylesheet" href="/app.css"/>
-</head><body>
+</head><body class="desk-body">
 <div class="app-shell">
 <aside class="side">
   <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
@@ -130,13 +130,15 @@ document.getElementById("saveContent").onclick=async()=>{
   }}); alert("Saved");
 };
 document.getElementById("saveSet").onclick=async()=>{
+  try{
   await api("/api/admin/settings",{method:"POST",body:{
     siteName:sName.value,tagline:sTag.value,supportLink:sSup.value,
     registrationFeeGHS:Number(sGhs.value),registrationFeeDisplayGHS:Number(sGhsShow.value),registrationFeeNGN:Number(sNgn.value),
     momoNetwork:sNet.value,momoNumber:sNum.value,momoName:sAcc.value,telegramPay:sTg.value,
     requireFee:sFee.value==="yes",requireApproval:sAppr.value==="yes",maintenance:sMaint.value==="yes",
     disclaimer:sDisc.value
-  }}); alert("Saved");
+  }}); alert("Saved. If the site sleeps on Render, set the same values in Render Environment so they come back.");
+  }catch(err){ alert(err.message || "Save failed"); }
 };
 document.getElementById("out").onclick=async()=>{ await api("/api/logout",{method:"POST"}); location.href="/"; };
 refresh();

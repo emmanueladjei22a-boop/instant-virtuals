@@ -439,7 +439,10 @@ app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
     ["siteName", "tagline", "supportLink", "disclaimer"].forEach((k) => {
       if (s[k] !== undefined) d.settings[k] = s[k];
     });
-    if (s.registrationFeeGHS !== undefined) d.settings.registrationFeeGHS = Number(s.registrationFeeGHS);
+    const numKeys = ["registrationFeeGHS","registrationFeeDisplayGHS","registrationFeeNGN","diamondPriceGHS","diamondQty","packRegularPrice","packRegularQty","packVipPrice","packVipQty","packVvipPrice","packVvipQty"];
+    numKeys.forEach((k) => {
+      if (s[k] !== undefined && s[k] !== "" && !Number.isNaN(Number(s[k]))) d.settings[k] = Number(s[k]);
+    });
     if (s.registrationFeeDisplayGHS !== undefined) d.settings.registrationFeeDisplayGHS = Number(s.registrationFeeDisplayGHS);
     if (s.registrationFeeNGN !== undefined) d.settings.registrationFeeNGN = Number(s.registrationFeeNGN);
     if (s.diamondPriceGHS !== undefined) d.settings.diamondPriceGHS = Number(s.diamondPriceGHS);
@@ -455,6 +458,9 @@ app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
     if (s.maintenance !== undefined) d.settings.maintenance = !!s.maintenance;
   });
   res.json({ ok: true, settings: publicSettings() });
+});
+app.get("/api/admin/settings", auth, adminOnly, (_req, res) => {
+  res.json({ settings: publicSettings() });
 });
 
 app.listen(PORT, () => {

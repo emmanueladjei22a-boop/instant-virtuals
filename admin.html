@@ -154,18 +154,21 @@ document.getElementById("saveContent").onclick=async()=>{
     stats:{winners:Number(cWin.value||0),totalWon:Number(cTot.value||0),winRateLabel:cRate.value}
   }}); alert("Saved");
 };
+function v(id){ const el=document.getElementById(id); return el?el.value:""; }
 document.getElementById("saveSet").onclick=async()=>{
   try{
-  await api("/api/admin/settings",{method:"POST",body:{
-    siteName:sName.value,tagline:sTag.value,supportLink:sSup.value,
-    registrationFeeGHS:Number(sGhs.value),registrationFeeDisplayGHS:Number(sGhsShow.value),registrationFeeNGN:Number(sNgn.value),
-    packRegularPrice:Number(sRegP.value),packRegularQty:Number(sRegQ.value),
-    packVipPrice:Number(sVipP.value),packVipQty:Number(sVipQ.value),
-    packVvipPrice:Number(sVvipP.value),packVvipQty:Number(sVvipQ.value),
-    momoNetwork:sNet.value,momoNumber:sNum.value,momoName:sAcc.value,telegramPay:sTg.value,
-    requireFee:sFee.value==="yes",requireApproval:sAppr.value==="yes",maintenance:sMaint.value==="yes",
-    disclaimer:sDisc.value
-  }}); alert("Saved"); refresh();
+    const body={
+      siteName:v("sName"),tagline:v("sTag"),supportLink:v("sSup"),
+      registrationFeeGHS:Number(v("sGhs")||0),registrationFeeDisplayGHS:Number(v("sGhsShow")||0),registrationFeeNGN:Number(v("sNgn")||0),
+      packRegularPrice:Number(v("sRegP")||20),packRegularQty:Number(v("sRegQ")||10),
+      packVipPrice:Number(v("sVipP")||50),packVipQty:Number(v("sVipQ")||30),
+      packVvipPrice:Number(v("sVvipP")||100),packVvipQty:Number(v("sVvipQ")||80),
+      momoNetwork:v("sNet"),momoNumber:v("sNum"),momoName:v("sAcc"),telegramPay:v("sTg"),
+      requireFee:v("sFee")==="yes",requireApproval:v("sAppr")==="yes",maintenance:v("sMaint")==="yes",
+      disclaimer:v("sDisc")
+    };
+    const out=await api("/api/admin/settings",{method:"POST",body});
+    alert("Saved: "+(out.settings&&out.settings.momoNumber?out.settings.momoNumber:"ok"));
   }catch(err){ alert(err.message || "Save failed"); }
 };
 document.getElementById("out").onclick=async()=>{ await api("/api/logout",{method:"POST"}); location.href="/"; };

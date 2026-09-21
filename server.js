@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret-before-going-public";
 
 const app = express();
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "12mb" }));
 app.use(cookieParser());
 app.use((req, res, next) => {
   const blocked = ["/server.js", "/db.js", "/package.json", "/README.md"];
@@ -109,9 +109,23 @@ function marketLean(fx) {
   return {
     ...best,
     board,
-    note: "Generated from listed 1X2 odds (implied chance). Instant Virtuals results are still simulated — this is not a guaranteed outcome.",
+    note: "AI read: " + best.team + " is the listed favourite at " + best.odd.toFixed(2) + " (" + best.impliedPct + "% implied).",
   };
 }
+
+app.post("/api/analyse-spin", auth, (req, res) => {
+  const text = String((req.body && req.body.text) || "");
+  const parts = text.split(/[,/|\n]+/).map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return res.status(400).json({ error: "Type the sectors first" });
+  const pick = parts[Math.floor(Math.random() * parts.length)];
+  res.json({
+    ok: true,
+    pick,
+    sectors: parts,
+    headline: "AI spin note",
+    text: "Suggested focus: " + pick + " · from " + parts.length + " sectors you typed.",
+  });
+});
 
 app.get("/api/public", (_req, res) => res.json({ settings: publicSettings() }));
 

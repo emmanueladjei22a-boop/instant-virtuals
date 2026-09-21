@@ -1,101 +1,170 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Predictions</title><link rel="stylesheet" href="/app.css"/>
-</head><body>
-<div class="app-shell">
-<aside class="side">
-  <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
-  <a class="active" href="/app.html">Predictions</a>
-  <a id="adminLink" class="hidden" href="/admin.html">Admin</a>
-  <button class="linkish" id="out">Log out</button>
-</aside>
-<main class="main">
-  <div class="topbar">
-    <div><h2 id="hello">Predictions</h2><p class="sub" style="margin:0" id="meta"></p></div>
-    <a class="btn btn-orange" id="support" target="_blank">Support</a>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Desk</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body class="desk-body hub">
+  <div class="hub-stats">
+    <div><b id="hOnline">1</b><small>ONLINE</small></div>
+    <div><b id="hPred">0</b><small>PREDICTIONS</small></div>
+    <div><b>24/7</b><small>ACTIVE</small></div>
   </div>
-  <div class="notice hidden" id="gate"></div>
-  <div class="grid-3">
-    <div class="card kpi">Account<strong id="kStatus">—</strong></div>
-    <div class="card kpi">Credits<strong id="kCredits">0</strong></div>
-    <div class="card kpi">Tickets<strong id="kSlips">0</strong></div>
-  </div>
-  <div style="height:16px"></div>
-  <section class="card">
-    <h3>Upload Instant Football round</h3>
-    <p class="sub">Screenshot the SportyBet virtual list, then type each match on its own line.</p>
-    <label class="dropzone" for="file">Tap to upload screenshot<br><small>PNG or JPG</small></label>
-    <input id="file" type="file" accept="image/*" hidden/>
-    <img id="preview" class="preview hidden" alt="preview"/>
-    <div class="field"><label>FIXTURES (one per line)</label><textarea id="fx" rows="6" placeholder="ARS vs MCI 1.90 3.40 3.80"></textarea></div>
-    <button class="btn btn-orange block" id="analyse">Get market leans →</button>
-  </section>
-  <div style="height:16px"></div>
-  <section class="card">
-    <h3>This round</h3>
-    <div id="result"><p class="sub">Upload or type fixtures to see the shortest odd on each match.</p></div>
-  </section>
-  <div style="height:16px"></div>
-  <section class="card"><h3>Today’s desk tips</h3><div id="tipList"></div></section>
-  <div style="height:16px"></div>
-  <section class="card"><h3>My tickets</h3><div id="slipList"></div></section>
-</main>
-</div>
-<script src="/api.js"></script>
-<script>
-let me, settings, imageName="";
-(async()=>{
-  try{
-    const data=await api("/api/me");
-    me=data.user; settings=data.settings;
-  }catch{ location.href="/login.html"; return; }
-  if(me.role!=="admin" && settings.requireFee && !me.paid){
-    location.href = me.paymentStatus==="proof_sent" ? "/pending.html" : "/country.html";
-    return;
-  }
-  if(settings.maintenance && me.role!=="admin"){
-    document.body.innerHTML="<div class='auth-page'><div class='card'>Maintenance. Try later.</div></div>";
-    return;
-  }
-  document.getElementById("hello").textContent="Hello, "+me.name;
-  document.getElementById("meta").textContent=me.email;
-  document.getElementById("support").href=settings.supportLink||"#";
-  if(me.role==="admin") document.getElementById("adminLink").classList.remove("hidden");
-  const gate=(!me.paid && settings.requireFee)?"Pay the registration fee, then ask admin to mark paid.":
-    (me.status!=="active"?"Your account is "+me.status+". Wait for admin approval.":"");
-  if(gate){document.getElementById("gate").textContent=gate;document.getElementById("gate").classList.remove("hidden");}
-  document.getElementById("kStatus").textContent=me.status+(me.paid?" · paid":" · unpaid");
-  document.getElementById("kCredits").textContent=me.credits;
-  document.getElementById("file").onchange=e=>{
-    const f=e.target.files[0]; if(!f)return; imageName=f.name;
-    const img=document.getElementById("preview"); img.src=URL.createObjectURL(f); img.classList.remove("hidden");
-  };
-  async function loadLists(){
-    const {slips}=await api("/api/my/slips");
-    document.getElementById("kSlips").textContent=slips.length;
-    document.getElementById("slipList").innerHTML=slips.length
-      ? `<table class="table"><tr><th>When</th><th>Matches</th><th>Leans</th></tr>${slips.map(s=>`<tr><td>${new Date(s.created_at).toLocaleString()}</td><td>${s.fixtures.length}</td><td>${s.leans.map(l=>l.pick).join(", ")}</td></tr>`).join("")}</table>`
-      : "<p class='sub'>No slips yet.</p>";
-    const {picks}=await api("/api/picks");
-    document.getElementById("tipList").innerHTML=picks.length
-      ? `<table class="table"><tr><th>Match</th><th>Tip</th><th>Odd</th><th>Note</th></tr>${picks.map(p=>`<tr><td>${p.match}</td><td>${p.selection}</td><td>${p.odd||""}</td><td>${p.note||""}</td></tr>`).join("")}</table>`
-      : "<p class='sub'>No admin tips yet.</p>";
-  }
-  await loadLists();
-  document.getElementById("analyse").onclick=async()=>{
-    try{
-      const slip=(await api("/api/analyse",{method:"POST",body:{fixturesText:document.getElementById("fx").value,imageName}})).slip;
-      document.getElementById("result").innerHTML=slip.fixtures.map((fx,i)=>{
-        const lean=slip.leans[i];
-        return `<div class="pick"><div><b>${fx.home} vs ${fx.away}</b><br><small>${fx.odds.home} · ${fx.odds.draw} · ${fx.odds.away}</small></div><div class="pick-out">${lean.pick}<small>${lean.odd}</small></div></div>`;
-      }).join("")+`<p class="hint">${slip.leans[0]?slip.leans[0].note:""}</p>`;
-      const fresh=(await api("/api/me")).user;
-      document.getElementById("kCredits").textContent=fresh.credits;
+  <header class="desk-top">
+    <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
+    <div class="desk-actions">
+      <a id="adminLink" class="hidden pill-link" href="/admin.html">Admin</a>
+      <a class="pill-link" id="support" target="_blank">Support</a>
+      <button class="pill-link" id="out">Out</button>
+    </div>
+  </header>
+  <main class="desk">
+    <p class="welcome-kicker">WELCOME,</p>
+    <h1 class="welcome-name" id="hello">MEMBER</h1>
+    <p class="desk-sub" id="meta">Choose a game. Analysis uses the odds or numbers you type.</p>
+    <div class="notice hidden" id="gate"></div>
+    <a class="pkg-btn" href="/country.html">BUY PACKAGES</a>
+    <div class="desk-kpis live-kpis">
+      <div><small>WINNERS</small><b id="kWin">0</b></div>
+      <div><small>TOTAL WON</small><b id="kTot">0</b></div>
+      <div><small>RATED</small><b id="kRate">—</b></div>
+    </div>
+    <div class="desk-kpis">
+      <div><small>STATUS</small><b id="kStatus">—</b></div>
+      <div><small>CREDITS</small><b id="kCredits">0</b></div>
+      <div><small>TICKETS</small><b id="kSlips">0</b></div>
+    </div>
+
+    <section class="game-card">
+      <div class="desk-label">INSTANT VIRTUALS</div>
+      <h2>Instant Football</h2>
+      <p>Upload a screenshot and type 1X2 odds for a market read.</p>
+      <button class="btn btn-orange block" type="button" id="openFoot">GET PREDICTIONS</button>
+    </section>
+
+    <section class="desk-card glow hidden" id="footBox">
+      <div class="desk-label">STEP 03 · ANALYSIS</div>
+      <h2>This round</h2>
+      <label class="dropzone fat" for="file">Tap to add screenshot<br><small>PNG · JPG · WEBP</small></label>
+      <input id="file" type="file" accept="image/*" hidden />
+      <img id="preview" class="preview hidden" alt="preview" />
+      <div class="field">
+        <label>FIXTURES</label>
+        <textarea id="fx" rows="5" placeholder="ARS vs MCI 1.90 3.40 3.80"></textarea>
+      </div>
+      <button class="btn btn-orange block" id="analyse">Generate analysis</button>
+    </section>
+
+    <section class="game-card spin-card">
+      <div class="desk-label">SPIN THE BOTTLE</div>
+      <h2>Spin da Bottle</h2>
+      <p>Type the sectors you see. The wheel itself is random — this only logs your note.</p>
+      <div class="field">
+        <label>WHAT YOU SEE</label>
+        <textarea id="spinTxt" rows="3" placeholder="Red / Green / Blue / Yellow"></textarea>
+      </div>
+      <button class="btn btn-orange block" type="button" id="spinGo">GET AI SPIN</button>
+      <p class="hint" id="spinOut"></p>
+    </section>
+
+    <section class="desk-card">
+      <div class="desk-label">THIS ROUND</div>
+      <h2>Market leans</h2>
+      <div id="result"><p class="empty">Nothing analysed yet.</p></div>
+    </section>
+    <section class="desk-card">
+      <div class="desk-label">DESK TIPS</div>
+      <h2>Published by admin</h2>
+      <div id="tipList"></div>
+    </section>
+    <section class="desk-card">
+      <div class="desk-label">HISTORY</div>
+      <h2>My tickets</h2>
+      <div id="slipList"></div>
+    </section>
+  </main>
+  <script src="/api.js"></script>
+  <script>
+    let me, settings, imageName = "";
+    (async () => {
+      try {
+        const data = await api("/api/me");
+        me = data.user; settings = data.settings;
+      } catch { location.href = "/login.html"; return; }
+      if (me.role !== "admin" && settings.requireFee && !me.paid) {
+        location.href = me.paymentStatus === "proof_sent" ? "/pending.html" : "/country.html";
+        return;
+      }
+      if (settings.maintenance && me.role !== "admin") {
+        document.body.innerHTML = "<div class='auth-page'><div class='card'>Maintenance.</div></div>";
+        return;
+      }
+      document.getElementById("hello").textContent = (me.name || "MEMBER").toUpperCase();
+      document.getElementById("support").href = settings.supportLink || "#";
+      if (me.role === "admin") document.getElementById("adminLink").classList.remove("hidden");
+      const gate = (!me.paid && settings.requireFee)
+        ? "Pay the registration fee, then wait for approval."
+        : (me.status !== "active" ? "Account is " + me.status : "");
+      if (gate) {
+        document.getElementById("gate").textContent = gate;
+        document.getElementById("gate").classList.remove("hidden");
+      }
+      document.getElementById("kStatus").textContent = me.paid ? "ACTIVE" : me.status.toUpperCase();
+      document.getElementById("kCredits").textContent = me.credits;
+      document.getElementById("kWin").textContent = (settings.stats && settings.stats.winners) || 0;
+      document.getElementById("kTot").textContent = (settings.stats && settings.stats.totalWon) || 0;
+      document.getElementById("kRate").textContent = (settings.stats && settings.stats.winRateLabel) || "—";
+      document.getElementById("file").onchange = (e) => {
+        const f = e.target.files[0]; if (!f) return; imageName = f.name;
+        const img = document.getElementById("preview");
+        img.src = URL.createObjectURL(f); img.classList.remove("hidden");
+      };
+      document.getElementById("openFoot").onclick = () => {
+        document.getElementById("footBox").classList.remove("hidden");
+        document.getElementById("footBox").scrollIntoView({ behavior: "smooth" });
+      };
+      document.getElementById("spinGo").onclick = async () => {
+        const btn = document.getElementById("spinGo");
+        btn.disabled = true; btn.textContent = "AI working…";
+        try {
+          const r = await api("/api/analyse-spin", { method: "POST", body: { text: document.getElementById("spinTxt").value } });
+          document.getElementById("spinOut").textContent = r.text;
+        } catch (err) { document.getElementById("spinOut").textContent = err.message; }
+        btn.disabled = false; btn.textContent = "GET AI SPIN";
+      };
+      async function loadLists() {
+        const { slips } = await api("/api/my/slips");
+        document.getElementById("kSlips").textContent = slips.length;
+        document.getElementById("hPred").textContent = slips.length;
+        document.getElementById("slipList").innerHTML = slips.length
+          ? slips.map((s) => `<div class="ticket-mini"><div>${new Date(s.created_at).toLocaleString()}</div><b>${(s.leans || []).map((l) => l.pick).join(" · ") || s.fixtures.length + " matches"}</b></div>`).join("")
+          : "<p class='empty'>No tickets yet.</p>";
+        const { picks } = await api("/api/picks");
+        document.getElementById("tipList").innerHTML = picks.length
+          ? picks.map((p) => `<div class="pick"><div><b>${p.match}</b><br><small>${p.note || "Admin tip"}</small></div><div class="pick-out">${p.selection}<small>${p.odd || ""}</small></div></div>`).join("")
+          : "<p class='empty'>No published tips yet.</p>";
+      }
       await loadLists();
-    }catch(err){alert(err.message);}
-  };
-  document.getElementById("out").onclick=async()=>{ await api("/api/logout",{method:"POST"}); location.href="/"; };
-})();
-</script>
-</body></html>
+      document.getElementById("analyse").onclick = async () => {
+        const btn = document.getElementById("analyse");
+        btn.disabled = true; btn.textContent = "AI working…";
+        try {
+          const slip = (await api("/api/analyse", { method: "POST", body: { fixturesText: document.getElementById("fx").value, imageName } })).slip;
+          document.getElementById("result").innerHTML = slip.fixtures.map((fx, i) => {
+            const lean = slip.leans[i];
+            const board = lean.board || [];
+            const bars = board.map((b) => `<div class="barline"><span>${b.pick}</span><i style="width:${b.impliedPct}%"></i><b>${b.impliedPct}%</b></div>`).join("");
+            return `<div class="ticket-row"><div class="teams">${fx.home} <span>vs</span> ${fx.away}</div><div class="odds">${fx.odds.home} · ${fx.odds.draw} · ${fx.odds.away}</div>${bars}<div class="lean">LEAN ${lean.pick} <em>@${lean.odd}</em></div></div>`;
+          }).join("") + `<p class="hint">${slip.leans[0] ? slip.leans[0].note : ""}</p>`;
+          document.getElementById("kCredits").textContent = (await api("/api/me")).user.credits;
+          await loadLists();
+        } catch (err) { alert(err.message); }
+        btn.disabled = false; btn.textContent = "Generate analysis";
+      };
+      document.getElementById("out").onclick = async () => { await api("/api/logout", { method: "POST" }); location.href = "/"; };
+    })();
+  </script>
+</body>
+</html>

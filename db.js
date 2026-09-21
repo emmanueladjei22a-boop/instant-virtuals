@@ -65,9 +65,12 @@ function empty() {
   };
 }
 
+let CACHE = null;
+
 function syncAdmin(data) {
   const email = String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase();
   const password = String(process.env.ADMIN_PASSWORD || "ChangeMeNow!2026");
+  if (!data.settings) data.settings = empty().settings;
   let admin = data.users.find((u) => u.id === "admin" || u.role === "admin");
   if (!admin) {
     admin = {
@@ -84,32 +87,34 @@ function syncAdmin(data) {
     data.users.unshift(admin);
   }
   admin.email = email;
-  admin.password_hash = bcrypt.hashSync(password, 10);
+  if (!admin.password_hash || admin._envPass !== password) {
+    admin.password_hash = bcrypt.hashSync(password, 10);
+    admin._envPass = password;
+  }
   admin.role = "admin";
   admin.status = "active";
   admin.paid = true;
-  data.settings.requireFee = data.settings.requireFee !== false;
-  data.settings.requireApproval = data.settings.requireApproval !== false;
-  if (!data.settings.momoNetwork) data.settings.momoNetwork = "TELECEL";
-  if (!data.settings.momoNumber) data.settings.momoNumber = "0200000000";
-  if (!data.settings.momoName) data.settings.momoName = "YOUR ACCOUNT NAME";
-  if (!data.settings.telegramPay) data.settings.telegramPay = "https://t.me/virtuals_nyame";
-  if (!data.settings.registrationFeeDisplayGHS) data.settings.registrationFeeDisplayGHS = 50;
   return data;
 }
 
 function load() {
+  if (CACHE) return CACHE;
   if (!fs.existsSync(FILE)) {
-    const data = syncAdmin(empty());
-    save(data);
-    return data;
+    CACHE = syncAdmin(empty());
+    save(CACHE);
+    return CACHE;
   }
-  const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
-  return syncAdmin(data);
+  try {
+    CACHE = syncAdmin(JSON.parse(fs.readFileSync(FILE, "utf8")));
+  } catch {
+    CACHE = CACHE || syncAdmin(empty());
+  }
+  return CACHE;
 }
 
 function save(data) {
-  fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+  CACHE = data;
+  try { fs.writeFileSync(FILE, JSON.stringify(data, null, 2)); } catch (e) { console.error(e); }
   return data;
 }
 

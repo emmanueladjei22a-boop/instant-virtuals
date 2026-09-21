@@ -60,7 +60,7 @@ function publicSettings() {
     stats: d.settings.stats,
     ticker: d.ticker,
     testimonials: d.testimonials,
-    adminHint: String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase(),
+    adminHint: "",
   };
 }
 function safeUser(u) {

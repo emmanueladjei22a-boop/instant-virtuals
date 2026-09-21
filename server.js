@@ -296,9 +296,9 @@ app.post("/api/analyse", auth, (req, res) => {
   let fixtures = parseFixtures(text);
   if (!fixtures.length && want) fixtures = parseFixtures(want);
   if (!fixtures.length) return res.status(400).json({ error: "Type games like TOT vs LIV" });
-  const cost = fixtures.length * 2;
+  const cost = 2;
   if ((user.credits || 0) < cost) {
-    return res.status(403).json({ error: "Need " + cost + " diamonds (2 per game)" });
+    return res.status(403).json({ error: "Need 2 diamonds to predict this screenshot" });
   }
   const leans = fixtures.map(marketLean);
   const slip = {

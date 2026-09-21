@@ -205,3 +205,13 @@ body.flow-bg .nav { background: transparent; border-bottom: 0; }
 .live-line .dot{display:inline-block;width:8px;height:8px;background:#ff3b30;border-radius:50%;margin-right:6px}
 .pred-card{background:#16100c;border-radius:16px;padding:14px;margin:10px 0}
 .pred-match{font-weight:800;margin-bottom:10px}
+.scan-frame{background:#120c0a;border-radius:20px;padding:14px;border:1px solid #1e4d7a;position:relative;margin-bottom:16px}
+.scan-frame img{width:100%;max-height:280px;object-fit:contain;border-radius:12px;display:block}
+.scan-tag{text-align:center;color:#3ea7ff;letter-spacing:2px;font-size:12px;font-weight:800;margin-top:10px}
+.ring-wrap{text-align:center;padding:10px 0 24px}
+.ring{width:140px;height:140px;margin:0 auto 12px;border-radius:50%;border:8px solid #1a2a40;border-top-color:#3ea7ff;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:spin .9s linear infinite}
+.ring b{font-size:36px;line-height:1;color:#3ea7ff}
+.ring small{color:#3ea7ff}
+.read-title{color:#3ea7ff;font-weight:800;font-size:20px;margin:0}
+.read-sub{color:#ff4d2e;font-size:11px;letter-spacing:1px;font-weight:800}
+@keyframes spin{to{transform:rotate(360deg)}}

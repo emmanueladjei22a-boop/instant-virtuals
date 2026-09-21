@@ -29,10 +29,16 @@ TOT vs LIV"></textarea>
     </div>
     <button class="btn btn-orange block" id="go">GET PREDICTION</button>
   </div>
-  <div class="desk-card hidden" id="readBox">
-    <img id="readImg" class="preview" alt=""/>
-    <p class="desk-hi" id="pct">0%</p>
-    <p>Reading screenshot…</p>
+  <div class="hidden" id="readBox">
+    <div class="scan-frame">
+      <img id="readImg" alt=""/>
+      <div class="scan-tag">[ READING ]</div>
+    </div>
+    <div class="ring-wrap">
+      <div class="ring" id="ring"><b id="pct">0</b><small>%</small></div>
+      <p class="read-title">Reading Screenshot...</p>
+      <p class="read-sub">AI ANALYSIS RUNNING</p>
+    </div>
   </div>
   <div id="outList"></div>
 </main>
@@ -65,14 +71,14 @@ document.getElementById("go").onclick=async()=>{
       const r=await Tesseract.recognize(imageFile,"eng",{
         logger:m=>{
           if(m.status==="recognizing text" && m.progress){
-            document.getElementById("pct").textContent=Math.round(m.progress*100)+"%";
+            document.getElementById("pct").textContent=Math.round(m.progress*100);
           }
         }
       });
       scanned=cleanOcr(r.data.text||"");
     }
   }catch(e){ scanned=""; }
-  document.getElementById("pct").textContent="100%";
+  document.getElementById("pct").textContent="100";
   const want=document.getElementById("want").value.trim();
   const fixturesText=want || scanned;
   if(!fixturesText){

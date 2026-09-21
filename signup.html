@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Sign up</title><link rel="stylesheet" href="/app.css"/>
-</head><body>
+</head><body class="flow-bg">
 <nav class="nav"><div class="wrap nav-inner">
   <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
 </div></nav>
@@ -26,7 +26,8 @@ document.getElementById("form").onsubmit=async e=>{
   e.preventDefault();
   const fd=new FormData(e.target);
   try{
-    await api("/api/signup",{method:"POST",body:{...Object.fromEntries(fd),country:"GH"}});
+    const out=await api("/api/signup",{method:"POST",body:{...Object.fromEntries(fd),country:"GH"}});
+    if(out.token) localStorage.setItem("iv_token",out.token);
     location.href="/country.html";
   }catch(err){document.getElementById("err").textContent=err.message;}
 };

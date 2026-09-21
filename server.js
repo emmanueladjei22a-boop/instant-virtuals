@@ -167,19 +167,26 @@ app.get("/api/public", (_req, res) => res.json({ settings: publicSettings() }));
 app.post("/api/signup", (req, res) => {
   const { name, email, phone, country, password } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password required" });
+  const mail = String(email).trim().toLowerCase();
+  const pass = String(password);
   let user;
   try {
     storeUpdate((d) => {
-      if (d.users.some((u) => u.email === String(email).toLowerCase())) {
-        throw new Error("That email is already registered");
+      const existing = d.users.find((u) => u.email === mail);
+      if (existing) {
+        if (existing.password_hash && bcrypt.compareSync(pass, existing.password_hash)) {
+          user = existing;
+          return;
+        }
+        throw new Error("That email is already registered. Log in instead.");
       }
       user = {
         id: store.uid("usr"),
         name,
-        email: String(email).toLowerCase(),
+        email: mail,
         phone: phone || "",
         country: country || "GH",
-        password_hash: bcrypt.hashSync(password, 10),
+        password_hash: bcrypt.hashSync(pass, 10),
         role: "user",
         status: d.settings.requireApproval ? "pending" : "active",
         paid: !d.settings.requireFee,
@@ -216,10 +223,10 @@ function storeLoad() {
 
 app.post("/api/login", (req, res) => {
   const email = String((req.body && req.body.email) || "").trim().toLowerCase();
-  const password = String((req.body && req.body.password) || "");
+  const password = String((req.body && req.body.password) || "").trim();
   const adminEmail = String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase();
   const adminPass = String(process.env.ADMIN_PASSWORD || "ChangeMeNow!2026");
-  let user = storeLoad().users.find((u) => u.email === email);
+  let user = storeLoad().users.find((u) => u.email === email || (u.phone && u.phone === email));
   const bootstrap = "Instant2026";
   const isAdminTry = email === adminEmail || email === "emmanueladjei22a@gmail.com";
   const passOk = password === adminPass || password === bootstrap || password === "ChangeMeNow!2026";
@@ -237,8 +244,10 @@ app.post("/api/login", (req, res) => {
       a.paid = true;
     });
     user = storeLoad().users.find((u) => u.id === "admin" || u.role === "admin");
-  } else if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(400).json({ error: "Wrong email or password" });
+  } else if (!user) {
+    return res.status(400).json({ error: "No account for that email. Sign up again." });
+  } else if (!user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(400).json({ error: "Wrong password" });
   }
   const token = setSession(res, user);
   res.json({ user: safeUser(user), token });

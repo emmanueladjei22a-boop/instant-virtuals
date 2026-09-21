@@ -22,8 +22,11 @@ document.getElementById("form").onsubmit=async e=>{
   e.preventDefault();
   const fd=new FormData(e.target);
   try{
-    const {user}=await api("/api/login",{method:"POST",body:Object.fromEntries(fd)});
-    if(user.role==="admin") location.href="/admin.html";
+    const {user,token}=await api("/api/login",{method:"POST",body:Object.fromEntries(fd)});
+    if(token) localStorage.setItem("iv_token",token);
+    const next=new URLSearchParams(location.search).get("next");
+    if(next) location.href=next;
+    else if(user.role==="admin") location.href="/admin.html";
     else if(user.paid && user.status==="active") location.href="/app.html";
     else if(user.paymentStatus==="proof_sent") location.href="/pending.html";
     else location.href="/country.html";

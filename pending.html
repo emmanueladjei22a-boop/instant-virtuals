@@ -6,7 +6,7 @@
   <title>Waiting approval</title>
   <link rel="stylesheet" href="/app.css" />
 </head>
-<body>
+<body class="flow-bg">
   <nav class="nav"><div class="wrap nav-inner">
     <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
   </div></nav>
@@ -21,10 +21,12 @@
   </div>
   <script src="/api.js"></script>
   <script>
+    const diamonds = new URLSearchParams(location.search).get("diamonds");
     api("/api/me").then(({user}) => {
-      if (!user) location.replace("/login.html");
+      if (!user) return location.replace("/login.html?next=/app.html");
+      if (diamonds) return;
       if (user.paid && user.status === "active") location.replace("/app.html");
-    }).catch(() => location.replace("/login.html"));
+    }).catch(() => {});
   </script>
 </body>
 </html>

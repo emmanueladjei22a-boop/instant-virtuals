@@ -23,8 +23,20 @@ app.use(express.static(__dirname));
 function sign(user) {
   return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "14d" });
 }
+function setSession(res, user) {
+  const token = sign(user);
+  res.cookie("iv_token", token, {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: true,
+    path: "/",
+    maxAge: 30 * 864e5,
+  });
+  return token;
+}
 function auth(req, res, next) {
-  const token = req.cookies.iv_token;
+  const header = req.headers.authorization || "";
+  const token = (header.startsWith("Bearer ") ? header.slice(7) : "") || req.cookies.iv_token;
   if (!token) return res.status(401).json({ error: "Not logged in" });
   try {
     req.auth = jwt.verify(token, JWT_SECRET);
@@ -185,8 +197,8 @@ app.post("/api/signup", (req, res) => {
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
-  res.cookie("iv_token", sign(user), { httpOnly: true, sameSite: "lax", maxAge: 14 * 864e5 });
-  res.json({ user: safeUser(user) });
+  const token = setSession(res, user);
+  res.json({ user: safeUser(user), token });
 });
 
 function storeUpdate(fn) {
@@ -222,8 +234,8 @@ app.post("/api/login", (req, res) => {
   } else if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(400).json({ error: "Wrong email or password" });
   }
-  res.cookie("iv_token", sign(user), { httpOnly: true, sameSite: "lax", maxAge: 14 * 864e5 });
-  res.json({ user: safeUser(user) });
+  const token = setSession(res, user);
+  res.json({ user: safeUser(user), token });
 });
 
 app.post("/api/logout", (_req, res) => {

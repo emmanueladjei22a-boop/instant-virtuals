@@ -23,7 +23,7 @@
 <script>
 (async()=>{
   const d=await api("/api/me").catch(()=>null);
-  if(!d) return location.replace("/login.html");
+  if(!d) return location.replace("/login.html?next=/packages.html");
   const s=d.settings;
   document.getElementById("qty").textContent=(s.diamondQty||10)+" ◆";
   document.getElementById("price").textContent="GH₵"+(s.diamondPriceGHS||20);

@@ -49,7 +49,7 @@
     let screenshot = "", screenshotName = "";
     (async () => {
       const { user, settings } = await api("/api/me").catch(() => ({ user: null }));
-      if (!user) return location.replace("/signup.html");
+      if (!user) return location.replace("/login.html?next="+encodeURIComponent(location.pathname+location.search));
       const buyDiamonds = new URLSearchParams(location.search).get("buy") === "diamonds";
       window.__payType = buyDiamonds ? "diamonds" : "registration";
       if (!buyDiamonds) {

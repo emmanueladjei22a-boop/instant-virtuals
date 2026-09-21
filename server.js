@@ -117,15 +117,15 @@ app.post("/api/analyse-spin", auth, (req, res) => {
   const d0 = storeLoad();
   const u0 = d0.users.find((x) => x.id === req.auth.id);
   if (!u0) return res.status(401).json({ error: "Not logged in" });
-  if (u0.role !== "admin" && (u0.credits || 0) < 1) {
-    return res.status(403).json({ error: "No gold left. Buy a package." });
+  if (u0.role !== "admin" && (u0.credits || 0) < 2) {
+    return res.status(403).json({ error: "Need 2 diamonds for one spin" });
   }
   const pick = Math.random() < 0.5 ? "UP" : "DOWN";
   const confidence = 62 + Math.floor(Math.random() * 23);
   const roundId = "SPIN-" + Date.now().toString(36);
   storeUpdate((d) => {
     const u = d.users.find((x) => x.id === req.auth.id);
-    if (u && u.role !== "admin" && u.credits > 0) u.credits -= 1;
+    if (u && u.role !== "admin") u.credits = Math.max(0, (u.credits || 0) - 2);
   });
   const credits = storeLoad().users.find((x) => x.id === req.auth.id).credits;
   res.json({ ok: true, pick, confidence, roundId, credits });
@@ -271,8 +271,21 @@ app.post("/api/analyse", auth, (req, res) => {
   if (!user.paid && data.settings.requireFee) return res.status(403).json({ error: "Registration fee not marked paid yet" });
   if (user.status !== "active") return res.status(403).json({ error: "Account is " + user.status });
   const text = (req.body && req.body.fixturesText) || "";
-  if (!text.trim()) return res.status(400).json({ error: "Paste at least one fixture line" });
-  const fixtures = parseFixtures(text);
+  if (!text.trim()) return res.status(400).json({ error: "No matches found. Type 1 or 2 games." });
+  let fixtures = parseFixtures(text);
+  const want = String((req.body && req.body.want) || "").trim();
+  if (want) {
+    const keys = want.toLowerCase().split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+    const filtered = fixtures.filter((fx) => keys.some((k) => (fx.home + " " + fx.away + " " + fx.raw).toLowerCase().includes(k) || k.includes(fx.home.toLowerCase()) || k.includes(fx.away.toLowerCase())));
+    if (filtered.length) fixtures = filtered.slice(0, 2);
+    else fixtures = parseFixtures(want).slice(0, 2);
+  } else {
+    fixtures = fixtures.slice(0, 2);
+  }
+  const cost = fixtures.length * 2;
+  if (user.role !== "admin" && (user.credits || 0) < cost) {
+    return res.status(403).json({ error: "Need " + cost + " diamonds (2 per game)" });
+  }
   const leans = fixtures.map(marketLean);
   const slip = {
     id: store.uid("slip"),
@@ -286,9 +299,10 @@ app.post("/api/analyse", auth, (req, res) => {
   storeUpdate((d) => {
     d.slips.unshift(slip);
     const u = d.users.find((x) => x.id === user.id);
-    if (u && u.credits > 0) u.credits -= 1;
+    if (u && u.role !== "admin") u.credits = Math.max(0, (u.credits || 0) - cost);
   });
-  res.json({ slip: { id: slip.id, fixtures, leans } });
+  const left = storeLoad().users.find((x) => x.id === user.id).credits;
+  res.json({ slip: { id: slip.id, fixtures, leans }, credits: left, cost });
 });
 
 app.get("/api/my/slips", auth, (req, res) => {

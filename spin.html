@@ -14,7 +14,7 @@
   <div class="desk-card">
     <div class="desk-label">GOLD WALLET</div>
     <h2 id="gold2">0</h2>
-    <p>1 per signal</p>
+    <p>2 diamonds per spin</p>
   </div>
   <h2 style="text-align:center;color:#4d7fff">SPIN DA BOTTLE</h2>
   <p class="desk-sub" style="text-align:center">Coming Bet Result</p>
@@ -27,8 +27,8 @@
       <p class="hint" id="rid"></p>
     </div>
   </div>
-  <p class="hint">Tap to charge 1 gold and reveal the next UP / DOWN signal.</p>
-  <button class="btn block" style="background:#2f6bff" id="go">NEXT RESULT · 1</button>
+  <p class="hint">Tap to use 2 diamonds and reveal the next UP / DOWN signal.</p>
+  <button class="btn block" style="background:#2f6bff" id="go">NEXT RESULT · 2◆</button>
   <div class="desk-card">
     <h2>How it works</h2>
     <p>Reveal the next result shown above</p>
@@ -58,7 +58,7 @@ document.getElementById("go").onclick=async()=>{
     document.getElementById("gold").textContent=r.credits;
     document.getElementById("gold2").textContent=r.credits;
   }catch(err){ alert(err.message); }
-  btn.disabled=false; btn.textContent="NEXT RESULT · 1";
+  btn.disabled=false; btn.textContent="NEXT RESULT · 2◆";
 };
 </script>
 </body>

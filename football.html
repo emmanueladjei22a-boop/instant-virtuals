@@ -4,69 +4,91 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Instant Football</title>
 <link rel="stylesheet" href="/app.css"/>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="desk-body">
 <header class="desk-top">
   <a class="brand" href="/app.html">‹ Instant Football</a>
-  <div class="desk-actions"><b id="gold">0</b> credit</div>
+  <div class="desk-actions"><b id="gold">0</b> ◆</div>
 </header>
 <main class="desk">
   <div class="desk-card glow">
     <div class="desk-label">DIAMOND WALLET</div>
     <h2 id="gold2">0</h2>
-    <p>1 credit per prediction</p>
+    <p>2 diamonds per game · max 2 games</p>
   </div>
   <div class="desk-card" id="upBox">
-    <div class="desk-label">UPLOAD VGAMES SCREENSHOT</div>
-    <label class="dropzone fat" for="file">Upload Screenshot<br><small>PNG, JPG — then tap GET PREDICTION</small></label>
+    <div class="desk-label">UPLOAD SCREENSHOT</div>
+    <label class="dropzone fat" for="file">Tap to add SportyBet screenshot<br><small>AI reads the matches from the photo</small></label>
     <input id="file" type="file" accept="image/*" hidden/>
     <img id="preview" class="preview hidden" alt=""/>
-    <div class="field"><label>FIXTURES (if scan misses a line)</label>
-      <textarea id="fx" rows="6" placeholder="FUL vs NEW 2.34 2.96 3.40
-TOT vs LIV 4.48 3.21 1.90"></textarea>
+    <div class="field">
+      <label>OPTIONAL — type 1 or 2 games you want (example TOT LIV)</label>
+      <textarea id="want" rows="2" placeholder="TOT vs LIV"></textarea>
     </div>
-    <button class="btn btn-orange block" id="go">GET PREDICTION</button>
+    <button class="btn btn-orange block" id="go">GET PREDICTION · 2◆</button>
   </div>
   <div class="desk-card hidden" id="readBox">
     <img id="readImg" class="preview" alt=""/>
     <p class="desk-hi" id="pct">0%</p>
-    <p>Reading Screenshot…</p>
-    <p class="desk-sub">AI ANALYSIS RUNNING</p>
+    <p>Reading screenshot…</p>
   </div>
   <div id="outList"></div>
 </main>
 <script src="/api.js"></script>
 <script>
-let imageName="";
+let imageFile=null, imageName="";
+function setGold(n){ document.getElementById("gold").textContent=n; document.getElementById("gold2").textContent=n; }
 (async()=>{
-  const me=(await api("/api/me").catch(()=>null));
+  const me=await api("/api/me").catch(()=>null);
   if(!me) return location.replace("/login.html");
-  document.getElementById("gold").textContent=me.user.credits;
-  document.getElementById("gold2").textContent=me.user.credits;
+  setGold(me.user.credits);
 })();
 document.getElementById("file").onchange=e=>{
-  const f=e.target.files[0]; if(!f) return; imageName=f.name;
+  const f=e.target.files[0]; if(!f) return;
+  imageFile=f; imageName=f.name;
   const url=URL.createObjectURL(f);
   document.getElementById("preview").src=url;
   document.getElementById("preview").classList.remove("hidden");
   document.getElementById("readImg").src=url;
 };
+function cleanOcr(text){
+  return text.split(/\n+/).map(l=>l.replace(/\s+/g," ").trim()).filter(l=>/vs|\d\.\d{2}/i.test(l)).join("\n");
+}
 document.getElementById("go").onclick=async()=>{
   document.getElementById("upBox").classList.add("hidden");
   document.getElementById("readBox").classList.remove("hidden");
-  let n=0;
-  await new Promise(res=>{
-    const t=setInterval(()=>{ n+=7; if(n>=100){ n=100; clearInterval(t); res(); }
-      document.getElementById("pct").textContent=n+"%"; }, 80);
-  });
+  let scanned="";
   try{
-    const slip=(await api("/api/analyse",{method:"POST",body:{fixturesText:document.getElementById("fx").value,imageName}})).slip;
+    if(imageFile && window.Tesseract){
+      const r=await Tesseract.recognize(imageFile,"eng",{
+        logger:m=>{
+          if(m.status==="recognizing text" && m.progress){
+            document.getElementById("pct").textContent=Math.round(m.progress*100)+"%";
+          }
+        }
+      });
+      scanned=cleanOcr(r.data.text||"");
+    }
+  }catch(e){ scanned=""; }
+  document.getElementById("pct").textContent="100%";
+  const want=document.getElementById("want").value.trim();
+  const fixturesText=scanned || want;
+  if(!fixturesText){
     document.getElementById("readBox").classList.add("hidden");
-    document.getElementById("outList").innerHTML="<h2>YOUR PREDICTIONS ("+slip.fixtures.length+")</h2>"+
-      slip.fixtures.map((fx,i)=>{
-        const lean=slip.leans[i];
+    document.getElementById("upBox").classList.remove("hidden");
+    alert("Could not read the photo. Type 1 or 2 games in the box.");
+    return;
+  }
+  try{
+    const data=await api("/api/analyse",{method:"POST",body:{fixturesText,want,imageName}});
+    if(data.credits!=null) setGold(data.credits);
+    document.getElementById("readBox").classList.add("hidden");
+    document.getElementById("outList").innerHTML="<h2>YOUR PREDICTIONS ("+data.slip.fixtures.length+")</h2>"+
+      data.slip.fixtures.map((fx,i)=>{
+        const lean=data.slip.leans[i];
         const label=lean.pick==="Home"?"HOME WIN":lean.pick==="Away"?"AWAY WIN":"DRAW";
-        return `<div class="pred-row"><b>${fx.home} vs ${fx.away}</b><span class="tag">${label}</span><small>${lean.impliedPct}% confidence</small></div>`;
+        return `<div class="pred-row"><b>${fx.home} vs ${fx.away}</b><span class="tag">${label}</span><small>${lean.impliedPct}% · 2◆</small></div>`;
       }).join("");
   }catch(err){
     document.getElementById("readBox").classList.add("hidden");

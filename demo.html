@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PlayDesk Demo — Not Real Money</title>
+  <style>
+    :root {
+      --bg: #07110c;
+      --card: #0e1a14;
+      --line: #1e3328;
+      --text: #e8f6ee;
+      --muted: #8aa896;
+      --green: #3ddc84;
+      --red: #ff6b6b;
+      --gold: #e7c36a;
+      --font: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: radial-gradient(800px 360px at 50% -8%, #163325, var(--bg)); color: var(--text); }
+    .banner {
+      background: #e7c36a; color: #1a1404; text-align: center;
+      font-weight: 800; font-size: 12px; letter-spacing: .6px; padding: 8px 12px;
+    }
+    .top { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; }
+    .brand { font-weight: 800; }
+    .brand small { display: block; color: var(--muted); font-weight: 600; font-size: 11px; }
+    .wrap { width: min(720px, calc(100% - 24px)); margin: 0 auto 40px; }
+    .bal {
+      background: linear-gradient(135deg, #124830, #0b2418);
+      border: 1px solid #2a5a40; border-radius: 20px; padding: 18px;
+    }
+    .bal label { color: var(--gold); font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+    .bal strong { display: block; font-size: 34px; margin: 4px 0 10px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { background: #0a1c13; border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+    h2 { margin: 22px 0 10px; font-size: 16px; letter-spacing: .3px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .row:last-child { border-bottom: 0; }
+    .row small { color: var(--muted); display: block; margin-top: 3px; }
+    .win { color: var(--green); font-weight: 800; }
+    .lose { color: var(--red); font-weight: 800; }
+    .pending { color: var(--gold); font-weight: 800; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-size: 11px; letter-spacing: .6px; }
+    .note { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.45; }
+    .tag { display: inline-block; background: #e7c36a; color: #1a1404; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="banner">DEMO ACCOUNT · FICTIONAL DATA · NOT REAL MONEY · NOT CONNECTED TO ANY BOOKMAKER</div>
+  <div class="top wrap">
+    <div class="brand">PlayDesk Demo<small>UI test profile only</small></div>
+    <span class="tag">DEMO</span>
+  </div>
+  <div class="wrap">
+    <section class="bal">
+      <label>DEMO WALLET · NOT REAL</label>
+      <strong>GHS 1,250.00</strong>
+      <div class="chips">
+        <span class="chip">User: demo_kwame24</span>
+        <span class="chip">ID: PD-90217</span>
+        <span class="chip">Status: Test only</span>
+      </div>
+    </section>
+
+    <h2>Open virtual slips (mock)</h2>
+    <div class="card">
+      <div class="row">
+        <div>NAP vs ARS · Home @1.85<small>Virtual league · Round 14 · DEMO</small></div>
+        <div class="pending">OPEN</div>
+      </div>
+      <div class="row">
+        <div>BHA vs EVE · Away @3.02<small>3-leg sample · Stake GHS 20</small></div>
+        <div class="pending">OPEN</div>
+      </div>
+    </div>
+
+    <h2>Mock betting history</h2>
+    <div class="card">
+      <table>
+        <tr><th>Match</th><th>Pick</th><th>Odd</th><th>Result</th></tr>
+        <tr><td>CRY vs BRE</td><td>Home</td><td>2.43</td><td class="win">WON +GHS 48.60</td></tr>
+        <tr><td>TOT vs MCI</td><td>Draw</td><td>3.40</td><td class="lose">LOST −GHS 25.00</td></tr>
+        <tr><td>AVL vs WHU</td><td>Away</td><td>2.90</td><td class="win">WON +GHS 58.00</td></tr>
+        <tr><td>FUL vs NEW</td><td>Home</td><td>2.10</td><td class="lose">LOST −GHS 15.00</td></tr>
+        <tr><td>3-leg combo</td><td>H / A / H</td><td>7.34</td><td class="win">WON +GHS 146.80</td></tr>
+      </table>
+    </div>
+
+    <h2>Mock transactions</h2>
+    <div class="card">
+      <div class="row"><div>Demo credit<small>19 Sep 2026 · 09:02</small></div><div class="win">+GHS 1,000.00</div></div>
+      <div class="row"><div>Virtual stake<small>19 Sep 2026 · 09:18</small></div><div class="lose">−GHS 25.00</div></div>
+      <div class="row"><div>Virtual return<small>19 Sep 2026 · 09:21</small></div><div class="win">+GHS 48.60</div></div>
+      <div class="row"><div>Virtual stake<small>19 Sep 2026 · 10:04</small></div><div class="lose">−GHS 20.00</div></div>
+      <div class="row"><div>Demo adjustment<small>19 Sep 2026 · 11:00</small></div><div class="win">+GHS 246.40</div></div>
+    </div>
+
+    <p class="note">
+      This page is a static UI mock. Username <b>demo_kwame24</b>, balance <b>GHS 1,250.00</b>,
+      slips and transactions are invented for layout testing. There is no login to a real bookmaker,
+      no deposit, no withdrawal, and no live odds feed.
+    </p>
+  </div>
+</body>
+</html>

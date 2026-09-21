@@ -3,55 +3,56 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Admin</title><link rel="stylesheet" href="/app.css"/>
 </head><body class="desk-body">
-<div class="app-shell">
-<aside class="side">
+<header class="desk-top">
   <a class="brand" href="/"><span class="logo">iV</span> INSTANT <b>VIRTUALS</b></a>
-  <div style="height:18px"></div>
-  <button class="linkish" data-tab="overview">Overview</button>
-  <button class="linkish" data-tab="users">Users</button>
-  <button class="linkish" data-tab="pays">Payments</button>
-  <button class="linkish" data-tab="tips">Publish tips</button>
-  <button class="linkish" data-tab="slips">User slips</button>
-  <button class="linkish" data-tab="content">Site content</button>
-  <button class="linkish" data-tab="settings">Settings</button>
-  <a href="/app.html">User desk</a>
-  <button class="linkish" id="out">Log out</button>
-</aside>
-<main class="main">
-  <div class="topbar"><h2>Admin</h2></div>
-  <div class="notice">Mark paid after you see a real MoMo screenshot. Then that user can open Predictions.</div>
+  <div class="desk-actions">
+    <a class="pill-link" href="/app.html">Desk</a>
+    <button class="pill-link" id="out">Out</button>
+  </div>
+</header>
+<main class="desk">
+  <p class="desk-hi">Admin</p>
+  <p class="desk-sub">Control room</p>
+  <div class="admin-tabs">
+    <button class="tab on" data-tab="overview">Home</button>
+    <button class="tab" data-tab="users">Users</button>
+    <button class="tab" data-tab="pays">Pay</button>
+    <button class="tab" data-tab="tips">Tips</button>
+    <button class="tab" data-tab="slips">Slips</button>
+    <button class="tab" data-tab="content">Site</button>
+    <button class="tab" data-tab="settings">Settings</button>
+  </div>
+  <div class="notice">Mark paid after a real MoMo screenshot. Then that user can open Predictions.</div>
   <section id="overview" class="panel">
-    <div class="grid-3">
-      <div class="card kpi">Users<strong id="oUsers">0</strong></div>
-      <div class="card kpi">Pending<strong id="oPending">0</strong></div>
-      <div class="card kpi">Slips<strong id="oSlips">0</strong></div>
+    <div class="desk-kpis">
+      <div><small>USERS</small><b id="oUsers">0</b></div>
+      <div><small>PENDING</small><b id="oPending">0</b></div>
+      <div><small>SLIPS</small><b id="oSlips">0</b></div>
     </div>
   </section>
-  <section id="users" class="panel hidden"><div class="card"><h3>Users</h3><div id="userTable"></div></div></section>
-  <section id="pays" class="panel hidden"><div class="card"><h3>Payment proofs</h3><div id="payTable"></div></div></section>
-  <section id="tips" class="panel hidden"><div class="card">
-    <h3>Publish a tip</h3>
+  <section id="users" class="panel hidden"><div class="desk-card"><div class="desk-label">MEMBERS</div><h2>Users</h2><div id="userTable"></div></div></section>
+  <section id="pays" class="panel hidden"><div class="desk-card glow"><div class="desk-label">MONEY</div><h2>Payment proofs</h2><div id="payTable"></div></div></section>
+  <section id="tips" class="panel hidden"><div class="desk-card glow">
+    <div class="desk-label">PUBLISH</div><h2>Desk tip</h2>
     <div class="field"><label>Match</label><input id="tMatch"/></div>
     <div class="field"><label>Selection</label><input id="tSel"/></div>
     <div class="field"><label>Odd</label><input id="tOdd"/></div>
     <div class="field"><label>Note</label><input id="tNote"/></div>
-    <button class="btn btn-orange" id="pub">Publish</button>
+    <button class="btn btn-orange block" id="pub">Publish</button>
     <div id="tipTable" style="margin-top:16px"></div>
   </div></section>
-  <section id="slips" class="panel hidden"><div class="card"><h3>All slips</h3><div id="slipTable"></div></div></section>
-  <section id="content" class="panel hidden"><div class="card">
-    <h3>Homepage content</h3>
+  <section id="slips" class="panel hidden"><div class="desk-card"><div class="desk-label">HISTORY</div><h2>User slips</h2><div id="slipTable"></div></div></section>
+  <section id="content" class="panel hidden"><div class="desk-card">
+    <div class="desk-label">HOMEPAGE</div><h2>Site content</h2>
     <div class="field"><label>Ticker (one per line)</label><textarea id="cTicker" rows="4"></textarea></div>
     <div class="field"><label>Testimonials JSON</label><textarea id="cReviews" rows="6"></textarea></div>
-    <div class="grid-3">
-      <div class="field"><label>Displayed count</label><input id="cWin" type="number"/></div>
-      <div class="field"><label>Displayed total won</label><input id="cTot" type="number"/></div>
-      <div class="field"><label>Win rate label</label><input id="cRate"/></div>
-    </div>
-    <button class="btn btn-orange" id="saveContent">Save content</button>
+    <div class="field"><label>Displayed count</label><input id="cWin" type="number"/></div>
+    <div class="field"><label>Displayed total won</label><input id="cTot" type="number"/></div>
+    <div class="field"><label>Win rate label</label><input id="cRate"/></div>
+    <button class="btn btn-orange block" id="saveContent">Save content</button>
   </div></section>
-  <section id="settings" class="panel hidden"><div class="card">
-    <h3>Settings</h3>
+  <section id="settings" class="panel hidden"><div class="desk-card glow">
+    <div class="desk-label">PAYOUT</div><h2>Settings</h2>
     <div class="field"><label>Site name</label><input id="sName"/></div>
     <div class="field"><label>Tagline</label><input id="sTag"/></div>
     <div class="field"><label>Support link</label><input id="sSup"/></div>
@@ -66,14 +67,13 @@
     <div class="field"><label>Require approval</label><select id="sAppr"><option value="yes">Yes</option><option value="no">No</option></select></div>
     <div class="field"><label>Maintenance</label><select id="sMaint"><option value="no">Off</option><option value="yes">On</option></select></div>
     <div class="field"><label>Disclaimer</label><textarea id="sDisc" rows="5"></textarea></div>
-    <button class="btn btn-orange" id="saveSet">Save settings</button>
+    <button class="btn btn-orange block" id="saveSet">Save settings</button>
   </div></section>
 </main>
-</div>
 <script src="/api.js"></script>
 <script>
 function show(tab){document.querySelectorAll(".panel").forEach(p=>p.classList.add("hidden"));document.getElementById(tab).classList.remove("hidden");}
-document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>show(b.dataset.tab));
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.remove("on"));b.classList.add("on");show(b.dataset.tab);});
 async function refresh(){
   const me=await api("/api/me").catch(()=>null);
   if(!me || me.user.role!=="admin"){ location.href="/login.html"; return; }

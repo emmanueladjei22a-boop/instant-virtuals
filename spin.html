@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Spin da Bottle</title>
+<link rel="stylesheet" href="/app.css"/>
+</head>
+<body class="desk-body">
+<header class="desk-top">
+  <a class="brand" href="/app.html">‹ Spin da Bottle</a>
+  <div class="desk-actions"><b id="gold">0</b></div>
+</header>
+<main class="desk">
+  <div class="desk-card">
+    <div class="desk-label">GOLD WALLET</div>
+    <h2 id="gold2">0</h2>
+    <p>1 per signal</p>
+  </div>
+  <h2 style="text-align:center;color:#4d7fff">SPIN DA BOTTLE</h2>
+  <p class="desk-sub" style="text-align:center">Coming Bet Result</p>
+  <div class="desk-card glow" id="box" style="min-height:160px;text-align:center">
+    <p id="lock">LOCKED · 1 to reveal</p>
+    <div id="sig" class="hidden">
+      <p class="desk-label">NEXT RESULT</p>
+      <p class="desk-hi" id="pick">—</p>
+      <p>Confidence <b id="conf">—</b></p>
+      <p class="hint" id="rid"></p>
+    </div>
+  </div>
+  <p class="hint">Tap to charge 1 gold and reveal the next UP / DOWN signal.</p>
+  <button class="btn block" style="background:#2f6bff" id="go">NEXT RESULT · 1</button>
+  <div class="desk-card">
+    <h2>How it works</h2>
+    <p>Reveal the next result shown above</p>
+    <p>Place your bet on the displayed option</p>
+    <p>Reveal again for the next round</p>
+    <div class="desk-kpis"><div>UP<br>Pays 2x</div><div>DOWN<br>Pays 2x</div></div>
+  </div>
+</main>
+<script src="/api.js"></script>
+<script>
+async function gold(){
+  const me=await api("/api/me");
+  document.getElementById("gold").textContent=me.user.credits;
+  document.getElementById("gold2").textContent=me.user.credits;
+}
+gold().catch(()=>location.replace("/login.html"));
+document.getElementById("go").onclick=async()=>{
+  const btn=document.getElementById("go");
+  btn.disabled=true; btn.textContent="Working…";
+  try{
+    const r=await api("/api/analyse-spin",{method:"POST",body:{}});
+    document.getElementById("lock").classList.add("hidden");
+    document.getElementById("sig").classList.remove("hidden");
+    document.getElementById("pick").textContent=r.pick;
+    document.getElementById("conf").textContent=r.confidence+"%";
+    document.getElementById("rid").textContent="Round "+r.roundId;
+    document.getElementById("gold").textContent=r.credits;
+    document.getElementById("gold2").textContent=r.credits;
+  }catch(err){ alert(err.message); }
+  btn.disabled=false; btn.textContent="NEXT RESULT · 1";
+};
+</script>
+</body>
+</html>

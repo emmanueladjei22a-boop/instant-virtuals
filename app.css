@@ -199,3 +199,7 @@ body.flow-bg .nav { background: transparent; border-bottom: 0; }
 }
 .game-card h2 { margin:4px 0 8px; }
 .spin-card { background:linear-gradient(180deg,#12182a,#0b0e18); border-color:rgba(80,120,255,.25); }
+.pred-row{background:#16100c;border-radius:14px;padding:12px;margin:8px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.pred-row .tag{background:#e24100;color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800}
+.live-line{display:flex;justify-content:space-between;color:#c9a79a;font-size:12px;margin:8px 0}
+.live-line .dot{display:inline-block;width:8px;height:8px;background:#ff3b30;border-radius:50%;margin-right:6px}

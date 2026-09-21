@@ -114,17 +114,21 @@ function marketLean(fx) {
 }
 
 app.post("/api/analyse-spin", auth, (req, res) => {
-  const text = String((req.body && req.body.text) || "");
-  const parts = text.split(/[,/|\n]+/).map((s) => s.trim()).filter(Boolean);
-  if (!parts.length) return res.status(400).json({ error: "Type the sectors first" });
-  const pick = parts[Math.floor(Math.random() * parts.length)];
-  res.json({
-    ok: true,
-    pick,
-    sectors: parts,
-    headline: "AI spin note",
-    text: "Suggested focus: " + pick + " · from " + parts.length + " sectors you typed.",
+  const d0 = storeLoad();
+  const u0 = d0.users.find((x) => x.id === req.auth.id);
+  if (!u0) return res.status(401).json({ error: "Not logged in" });
+  if (u0.role !== "admin" && (u0.credits || 0) < 1) {
+    return res.status(403).json({ error: "No gold left. Buy a package." });
+  }
+  const pick = Math.random() < 0.5 ? "UP" : "DOWN";
+  const confidence = 62 + Math.floor(Math.random() * 23);
+  const roundId = "SPIN-" + Date.now().toString(36);
+  storeUpdate((d) => {
+    const u = d.users.find((x) => x.id === req.auth.id);
+    if (u && u.role !== "admin" && u.credits > 0) u.credits -= 1;
   });
+  const credits = storeLoad().users.find((x) => x.id === req.auth.id).credits;
+  res.json({ ok: true, pick, confidence, roundId, credits });
 });
 
 app.get("/api/public", (_req, res) => res.json({ settings: publicSettings() }));
@@ -319,6 +323,7 @@ app.post("/api/admin/users/:id/action", auth, adminOnly, (req, res) => {
       u.paid = true;
       u.paymentStatus = "paid";
       u.status = "active";
+      if ((u.credits || 0) < 20) u.credits = 20;
       d.payments.forEach((p) => {
         if (p.user_id === u.id && p.status !== "paid") p.status = "paid";
       });

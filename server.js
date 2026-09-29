@@ -1,477 +1,97 @@
-const path = require("path");
 const express = require("express");
-const cookieParser = require("cookie-parser");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-const store = require("./db");
-
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret-before-going-public";
+const path = require("path");
 
 const app = express();
-app.use(express.json({ limit: "12mb" }));
-app.use(cookieParser());
-app.use((req, res, next) => {
-  const blocked = ["/server.js", "/db.js", "/package.json", "/README.md"];
-  if (blocked.includes(req.path) || req.path.startsWith("/data") || req.path.startsWith("/node_modules")) {
-    return res.status(404).end();
-  }
-  next();
-});
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve files from the root of your GitHub repo
 app.use(express.static(__dirname));
 
-function sign(user) {
-  return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "14d" });
-}
-function setSession(res, user) {
-  const token = sign(user);
-  res.cookie("iv_token", token, {
-    httpOnly: false,
-    sameSite: "lax",
-    secure: true,
-    path: "/",
-    maxAge: 30 * 864e5,
-  });
-  return token;
-}
-function auth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = (header.startsWith("Bearer ") ? header.slice(7) : "") || req.cookies.iv_token;
-  if (!token) return res.status(401).json({ error: "Not logged in" });
-  try {
-    req.auth = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ error: "Session expired" });
-  }
-}
-function adminOnly(req, res, next) {
-  if (!req.auth || req.auth.role !== "admin") return res.status(403).json({ error: "Admin only" });
-  next();
-}
-function publicSettings() {
-  const d = store.load();
-  return {
-    siteName: d.settings.siteName,
-    tagline: d.settings.tagline,
-    supportLink: d.settings.supportLink,
-    registrationFeeGHS: d.settings.registrationFeeGHS,
-    registrationFeeDisplayGHS: d.settings.registrationFeeDisplayGHS || 50,
-    registrationFeeNGN: d.settings.registrationFeeNGN,
-    diamondPriceGHS: d.settings.diamondPriceGHS || 20,
-    diamondQty: d.settings.diamondQty || 10,
-    packRegularPrice: d.settings.packRegularPrice || 20,
-    packRegularQty: d.settings.packRegularQty || 10,
-    packVipPrice: d.settings.packVipPrice || 50,
-    packVipQty: d.settings.packVipQty || 30,
-    packVvipPrice: d.settings.packVvipPrice || 100,
-    packVvipQty: d.settings.packVvipQty || 80,
-    momoNetwork: d.settings.momoNetwork,
-    momoNumber: d.settings.momoNumber,
-    momoName: d.settings.momoName,
-    telegramPay: d.settings.telegramPay,
-    ngBank: d.settings.ngBank,
-    requireFee: d.settings.requireFee,
-    requireApproval: d.settings.requireApproval,
-    maintenance: d.settings.maintenance,
-    disclaimer: String(d.settings.disclaimer||"").replace("They are a guaranteed","They are not a guaranteed"),
-    stats: d.settings.stats,
-    ticker: d.ticker,
-    testimonials: d.testimonials,
-    adminHint: "",
-  };
-}
-function safeUser(u) {
-  if (!u) return null;
-  return {
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    phone: u.phone,
-    country: u.country,
-    role: u.role,
-    status: u.status,
-    paid: !!u.paid,
-    paymentStatus: u.paymentStatus || (u.paid ? "paid" : "unpaid"),
-    credits: u.credits,
-    created_at: u.created_at,
-  };
-}
-function parseFixtures(text) {
-  const out = [];
-  String(text || "")
-    .split(/\n+/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .forEach((line) => {
-      const odds = (line.match(/\d+\.\d{1,2}/g) || []).slice(0, 3).map(Number);
-      while (odds.length < 3) odds.push(2.1 + odds.length * 0.4);
-      let home = "", away = "";
-      const vs = line.match(/([A-Za-z][A-Za-z0-9]{1,14})\s+vs\.?\s+([A-Za-z][A-Za-z0-9]{1,14})/i);
-      if (vs) {
-        home = vs[1].toUpperCase();
-        away = vs[2].toUpperCase();
-      } else {
-        const codes = line.toUpperCase().match(/\b[A-Z]{3}\b/g) || [];
-        if (codes.length >= 2) {
-          home = codes[0];
-          away = codes[1];
-        }
-      }
-      if (!home || !away) return;
-      out.push({ home, away, odds: { home: odds[0], draw: odds[1], away: odds[2] }, raw: line });
-    });
-  return out;
-}
-function marketLean(fx) {
-  const raw = [
-    { pick: "Home", team: fx.home, odd: Number(fx.odds.home) || 2.5 },
-    { pick: "Draw", team: "Draw", odd: Number(fx.odds.draw) || 3.2 },
-    { pick: "Away", team: fx.away, odd: Number(fx.odds.away) || 3.4 },
-  ];
-  const inv = raw.map((r) => 1 / r.odd);
-  const sum = inv.reduce((a, b) => a + b, 0) || 1;
-  const board = raw.map((r, i) => ({
-    ...r,
-    impliedPct: Math.round((inv[i] / sum) * 100),
-  }));
-  const ranked = [...board].sort((a, b) => b.impliedPct - a.impliedPct);
-  const best = ranked[0];
-  return {
-    ...best,
-    board,
-    note: "AI read: " + best.team + " is the listed favourite at " + best.odd.toFixed(2) + " (" + best.impliedPct + "% implied).",
-  };
-}
-
-app.post("/api/analyse-spin", auth, (req, res) => {
-  const d0 = storeLoad();
-  const u0 = d0.users.find((x) => x.id === req.auth.id);
-  if (!u0) return res.status(401).json({ error: "Not logged in" });
-  if ((u0.credits || 0) < 2) {
-    return res.status(403).json({ error: "Need 2 diamonds for one spin" });
-  }
-  const pick = Math.random() < 0.5 ? "UP" : "DOWN";
-  const confidence = 62 + Math.floor(Math.random() * 23);
-  const roundId = "SPIN-" + Date.now().toString(36);
-  storeUpdate((d) => {
-    const u = d.users.find((x) => x.id === req.auth.id);
-    if (u) u.credits = Math.max(0, (u.credits || 0) - 2);
-  });
-  const credits = storeLoad().users.find((x) => x.id === req.auth.id).credits;
-  res.json({ ok: true, pick, confidence, roundId, credits });
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ status: "OK" });
 });
 
-app.get("/api/public", (_req, res) => res.json({ settings: publicSettings() }));
-
-app.post("/api/signup", (req, res) => {
-  const { name, email, phone, country, password } = req.body || {};
-  if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password required" });
-  const mail = String(email).trim().toLowerCase();
-  const pass = String(password);
-  let user;
-  try {
-    storeUpdate((d) => {
-      const existing = d.users.find((u) => u.email === mail);
-      if (existing) {
-        if (existing.password_hash && bcrypt.compareSync(pass, existing.password_hash)) {
-          user = existing;
-          return;
-        }
-        throw new Error("That email is already registered. Log in instead.");
-      }
-      user = {
-        id: store.uid("usr"),
-        name,
-        email: mail,
-        phone: phone || "",
-        country: country || "GH",
-        password_hash: bcrypt.hashSync(pass, 10),
-        role: "user",
-        status: d.settings.requireApproval ? "pending" : "active",
-        paid: !d.settings.requireFee,
-        paymentStatus: d.settings.requireFee ? "unpaid" : "paid",
-        credits: 0,
-        created_at: Date.now(),
-      };
-      d.users.push(user);
-      if (d.settings.requireFee) {
-        d.payments.push({
-          id: store.uid("pay"),
-          user_id: user.id,
-          amount: country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS,
-          currency: country === "NG" ? "NGN" : "GHS",
-          type: "registration",
-          status: "unpaid",
-          created_at: Date.now(),
-        });
-      }
-    });
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
-  const token = setSession(res, user);
-  res.json({ user: safeUser(user), token });
+// Homepage
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-function storeUpdate(fn) {
-  return require("./db").update(fn);
-}
-function storeLoad() {
-  return require("./db").load();
-}
-
-app.post("/api/login", (req, res) => {
-  const email = String((req.body && req.body.email) || "").trim().toLowerCase();
-  const password = String((req.body && req.body.password) || "").trim();
-  const adminEmail = String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase();
-  const adminPass = String(process.env.ADMIN_PASSWORD || "ChangeMeNow!2026");
-  let user = storeLoad().users.find((u) => u.email === email || (u.phone && u.phone === email));
-  const bootstrap = "Instant2026";
-  const isAdminTry = email === adminEmail || email === "emmanueladjei22a@gmail.com";
-  const passOk = password === adminPass || password === bootstrap || password === "ChangeMeNow!2026";
-  if (isAdminTry && passOk) {
-    storeUpdate((d) => {
-      let a = d.users.find((u) => u.id === "admin" || u.role === "admin");
-      if (!a) {
-        a = { id: "admin", name: "Site Admin", phone: "", country: "GH", role: "admin", status: "active", paid: true, credits: 999, created_at: Date.now() };
-        d.users.unshift(a);
-      }
-      a.email = email;
-      a.password_hash = bcrypt.hashSync(password, 10);
-      a.role = "admin";
-      a.status = "active";
-      a.paid = true;
-    });
-    user = storeLoad().users.find((u) => u.id === "admin" || u.role === "admin");
-  } else if (!user) {
-    return res.status(400).json({ error: "No account for that email. Sign up again." });
-  } else if (!user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(400).json({ error: "Wrong password" });
-  }
-  const token = setSession(res, user);
-  res.json({ user: safeUser(user), token });
+// Admin page
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
 });
 
-app.post("/api/logout", (_req, res) => {
-  res.clearCookie("iv_token");
-  res.json({ ok: true });
+// Success page
+app.get("/success", (req, res) => {
+  res.sendFile(path.join(__dirname, "success.html"));
 });
 
-app.get("/api/me", auth, (req, res) => {
-  const user = storeLoad().users.find((u) => u.id === req.auth.id);
-  if (!user) return res.status(401).json({ error: "User missing" });
-  res.json({ user: safeUser(user), settings: publicSettings() });
-});
-
-app.post("/api/country", auth, (req, res) => {
-  const country = req.body && req.body.country;
-  if (!["GH", "NG", "OTHER"].includes(country)) return res.status(400).json({ error: "Pick a country" });
-  storeUpdate((d) => {
-    const u = d.users.find((x) => x.id === req.auth.id);
-    if (u) u.country = country;
-  });
-  res.json({ ok: true, country });
-});
-
-app.post("/api/payment-proof", auth, (req, res) => {
-  const { txId, senderName, payerNumber, screenshotName, screenshot, type, pack } = req.body || {};
-  if (!senderName || !payerNumber) return res.status(400).json({ error: "Sender name and number are required" });
-  const kind = type === "diamonds" ? "diamonds" : "registration";
-  storeUpdate((d) => {
-    const u = d.users.find((x) => x.id === req.auth.id);
-    if (!u) return;
-    if (kind === "registration") {
-      u.paymentStatus = "proof_sent";
-      u.status = "pending";
-    } else {
-      u.diamondProof = "proof_sent";
-      u.pendingPack = pack || "regular";
-    }
-    const packKey = (pack || "regular").toLowerCase();
-    const packMap = {
-      regular: { price: d.settings.packRegularPrice || 20, qty: d.settings.packRegularQty || 10 },
-      vip: { price: d.settings.packVipPrice || 50, qty: d.settings.packVipQty || 30 },
-      vvip: { price: d.settings.packVvipPrice || 100, qty: d.settings.packVvipQty || 80 },
-    };
-    const chosen = packMap[packKey] || packMap.regular;
-    d.payments.unshift({
-      id: store.uid("pay"),
-      user_id: u.id,
-      user_name: u.name,
-      user_email: u.email,
-      pack: kind === "diamonds" ? packKey : "",
-      qty: kind === "diamonds" ? chosen.qty : 0,
-      amount: kind === "diamonds"
-        ? chosen.price
-        : (u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS),
-      currency: u.country === "NG" && kind !== "diamonds" ? "NGN" : "GHS",
-      type: kind,
-      status: "proof_sent",
-      txId: txId || "",
-      senderName,
-      payerNumber,
-      screenshotName: screenshotName || "",
-      screenshot: screenshot && String(screenshot).length < 900000 ? screenshot : "",
-      created_at: Date.now(),
-    });
-  });
-  res.json({ ok: true });
-});
-
-app.post("/api/analyse", auth, (req, res) => {
-  const data = storeLoad();
-  if (data.settings.maintenance && req.auth.role !== "admin") {
-    return res.status(503).json({ error: "Site is in maintenance" });
-  }
-  const user = data.users.find((u) => u.id === req.auth.id);
-  if (!user.paid && data.settings.requireFee) return res.status(403).json({ error: "Registration fee not marked paid yet" });
-  if (user.status !== "active") return res.status(403).json({ error: "Account is " + user.status });
-  const want = String((req.body && req.body.want) || "").trim();
-  const text = want || (req.body && req.body.fixturesText) || "";
-  if (!String(text).trim()) return res.status(400).json({ error: "No matches found. Type 1 or 2 games." });
-  let fixtures = parseFixtures(text);
-  if (!fixtures.length && want) fixtures = parseFixtures(want);
-  if (!fixtures.length) return res.status(400).json({ error: "Type games like TOT vs LIV" });
-  const cost = 2;
-  if ((user.credits || 0) < cost) {
-    return res.status(403).json({ error: "Need 2 diamonds to predict this screenshot" });
-  }
-  const leans = fixtures.map(marketLean);
-  const slip = {
-    id: store.uid("slip"),
-    user_id: user.id,
-    image_name: req.body.imageName || "",
-    fixtures_text: text,
-    fixtures,
-    leans,
-    created_at: Date.now(),
-  };
-  storeUpdate((d) => {
-    d.slips.unshift(slip);
-    const u = d.users.find((x) => x.id === user.id);
-    if (u) u.credits = Math.max(0, (u.credits || 0) - cost);
-  });
-  const left = storeLoad().users.find((x) => x.id === user.id).credits;
-  res.json({ slip: { id: slip.id, fixtures, leans }, credits: left, cost });
-});
-
-app.get("/api/my/slips", auth, (req, res) => {
-  res.json({ slips: storeLoad().slips.filter((s) => s.user_id === req.auth.id) });
-});
-
-app.get("/api/picks", auth, (_req, res) => {
-  res.json({ picks: storeLoad().picks });
-});
-
-app.get("/api/admin/overview", auth, adminOnly, (_req, res) => {
-  const d = storeLoad();
+// Packages
+app.get("/api/packages", (req, res) => {
   res.json({
-    users: d.users.length,
-    pending: d.users.filter((u) => u.status === "pending").length,
-    slips: d.slips.length,
+    MTN: [
+      { data: "1GB", price: 4.15 },
+      { data: "2GB", price: 9.13 },
+      { data: "3GB", price: 13.70 },
+      { data: "4GB", price: 18.26 },
+      { data: "5GB", price: 22.83 },
+      { data: "6GB", price: 25.08 },
+      { data: "8GB", price: 36.30 },
+      { data: "10GB", price: 43.44 },
+      { data: "15GB", price: 65.34 },
+      { data: "20GB", price: 85.25 },
+      { data: "25GB", price: 108.90 },
+      { data: "30GB", price: 130.90 },
+      { data: "40GB", price: 157.00 },
+      { data: "50GB", price: 185.00 }
+    ],
+
+    Telecel: [
+      { data: "10GB", price: 41 },
+      { data: "15GB", price: 57 },
+      { data: "20GB", price: 76 },
+      { data: "30GB", price: 114 },
+      { data: "40GB", price: 152 },
+      { data: "50GB", price: 190 }
+    ],
+
+    AirtelTigo: [
+      { data: "1GB", price: 3.70 },
+      { data: "2GB", price: 7.40 },
+      { data: "5GB", price: 18.50 },
+      { data: "10GB", price: 36.50 },
+      { data: "20GB", price: 73 },
+      { data: "30GB", price: 109.50 },
+      { data: "50GB", price: 182.50 }
+    ]
   });
 });
 
-app.get("/api/admin/users", auth, adminOnly, (_req, res) => {
-  res.json({ users: storeLoad().users.map(safeUser) });
-});
+// Test checkout route
+app.post("/api/checkout", (req, res) => {
+  const { phone, network, data, amount } = req.body;
 
-app.post("/api/admin/users/:id/action", auth, adminOnly, (req, res) => {
-  const { action } = req.body || {};
-  storeUpdate((d) => {
-    const u = d.users.find((x) => x.id === req.params.id);
-    if (!u) return;
-    if (action === "approve") u.status = "active";
-    if (action === "block") u.status = "blocked";
-    if (action === "paid") {
-      u.paid = true;
-      u.paymentStatus = "paid";
-      u.status = "active";
-      d.payments.forEach((p) => {
-        if (p.user_id === u.id && p.status !== "paid") p.status = "paid";
-      });
-    }
-    if (action === "credit") u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
-    if (action === "diamonds") {
-      const pending = d.payments.find((p) => p.user_id === u.id && p.type === "diamonds" && p.status !== "paid");
-      const add = (pending && pending.qty) || d.settings.packRegularQty || d.settings.diamondQty || 10;
-      u.credits = (u.credits || 0) + Number(add);
-      u.diamondProof = "paid";
-      d.payments.forEach((p) => {
-        if (p.user_id === u.id && p.type === "diamonds" && p.status !== "paid") p.status = "paid";
-      });
-    }
+  if (!phone || !network || !data || !amount) {
+    return res.status(400).json({
+      error: "Missing required information"
+    });
+  }
+
+  res.json({
+    success: true,
+    message: "Order received",
+    phone,
+    network,
+    data,
+    amount
   });
-  res.json({ ok: true });
 });
 
-app.post("/api/admin/picks", auth, adminOnly, (req, res) => {
-  const { match, selection, odd, note } = req.body || {};
-  if (!match || !selection) return res.status(400).json({ error: "Match and selection required" });
-  const admin = storeLoad().users.find((u) => u.id === req.auth.id);
-  storeUpdate((d) => {
-    d.picks.unshift({
-      id: store.uid("pick"),
-      match,
-      selection,
-      odd: odd || "",
-      note: note || "",
-      author: admin ? admin.name : "admin",
-      created_at: Date.now(),
-    });
-  });
-  res.json({ ok: true });
-});
-
-app.get("/api/admin/slips", auth, adminOnly, (_req, res) => {
-  res.json({ slips: storeLoad().slips });
-});
-
-app.get("/api/admin/payments", auth, adminOnly, (_req, res) => {
-  res.json({ payments: storeLoad().payments || [] });
-});
-
-app.post("/api/admin/content", auth, adminOnly, (req, res) => {
-  const { ticker, testimonials, stats } = req.body || {};
-  storeUpdate((d) => {
-    if (Array.isArray(ticker)) d.ticker = ticker;
-    if (Array.isArray(testimonials)) d.testimonials = testimonials;
-    if (stats) d.settings.stats = stats;
-  });
-  res.json({ ok: true });
-});
-
-app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
-  const s = req.body || {};
-  storeUpdate((d) => {
-    ["siteName", "tagline", "supportLink", "disclaimer"].forEach((k) => {
-      if (s[k] !== undefined) d.settings[k] = s[k];
-    });
-    const numKeys = ["registrationFeeGHS","registrationFeeDisplayGHS","registrationFeeNGN","diamondPriceGHS","diamondQty","packRegularPrice","packRegularQty","packVipPrice","packVipQty","packVvipPrice","packVvipQty"];
-    numKeys.forEach((k) => {
-      if (s[k] !== undefined && s[k] !== "" && !Number.isNaN(Number(s[k]))) d.settings[k] = Number(s[k]);
-    });
-    if (s.registrationFeeDisplayGHS !== undefined) d.settings.registrationFeeDisplayGHS = Number(s.registrationFeeDisplayGHS);
-    if (s.registrationFeeNGN !== undefined) d.settings.registrationFeeNGN = Number(s.registrationFeeNGN);
-    if (s.diamondPriceGHS !== undefined) d.settings.diamondPriceGHS = Number(s.diamondPriceGHS);
-    if (s.diamondQty !== undefined) d.settings.diamondQty = Number(s.diamondQty);
-    ["packRegularPrice","packRegularQty","packVipPrice","packVipQty","packVvipPrice","packVvipQty"].forEach((k)=>{
-      if (s[k] !== undefined) d.settings[k] = Number(s[k]);
-    });
-    ["momoNetwork", "momoNumber", "momoName", "telegramPay", "ngBank"].forEach((k) => {
-      if (s[k] !== undefined) d.settings[k] = s[k];
-    });
-    if (s.requireFee !== undefined) d.settings.requireFee = !!s.requireFee;
-    if (s.requireApproval !== undefined) d.settings.requireApproval = !!s.requireApproval;
-    if (s.maintenance !== undefined) d.settings.maintenance = !!s.maintenance;
-  });
-  res.json({ ok: true, settings: publicSettings() });
-});
-app.get("/api/admin/settings", auth, adminOnly, (_req, res) => {
-  res.json({ settings: publicSettings() });
-});
-
-app.listen(PORT, () => {
-  console.log("Instant Virtuals live on http://localhost:" + PORT);
+// Start server
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`DataHub GH running on port ${PORT}`);
 });

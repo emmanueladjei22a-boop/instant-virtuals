@@ -23,8 +23,20 @@ app.use(express.static(__dirname));
 function sign(user) {
   return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "14d" });
 }
+function setSession(res, user) {
+  const token = sign(user);
+  res.cookie("iv_token", token, {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: true,
+    path: "/",
+    maxAge: 30 * 864e5,
+  });
+  return token;
+}
 function auth(req, res, next) {
-  const token = req.cookies.iv_token;
+  const header = req.headers.authorization || "";
+  const token = (header.startsWith("Bearer ") ? header.slice(7) : "") || req.cookies.iv_token;
   if (!token) return res.status(401).json({ error: "Not logged in" });
   try {
     req.auth = jwt.verify(token, JWT_SECRET);
@@ -46,6 +58,8 @@ function publicSettings() {
     registrationFeeGHS: d.settings.registrationFeeGHS,
     registrationFeeDisplayGHS: d.settings.registrationFeeDisplayGHS || 50,
     registrationFeeNGN: d.settings.registrationFeeNGN,
+    diamondPriceGHS: d.settings.diamondPriceGHS || 20,
+    diamondQty: d.settings.diamondQty || 10,
     momoNetwork: d.settings.momoNetwork,
     momoNumber: d.settings.momoNumber,
     momoName: d.settings.momoName,
@@ -58,7 +72,7 @@ function publicSettings() {
     stats: d.settings.stats,
     ticker: d.ticker,
     testimonials: d.testimonials,
-    adminHint: String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase(),
+    adminHint: "",
   };
 }
 function safeUser(u) {
@@ -78,19 +92,30 @@ function safeUser(u) {
   };
 }
 function parseFixtures(text) {
-  return String(text || "")
+  const out = [];
+  String(text || "")
     .split(/\n+/)
     .map((l) => l.trim())
     .filter(Boolean)
-    .map((line, i) => {
-      const oddsMatch = line.match(/(\d+\.\d+)/g);
-      const vs = line.split(/\s+vs\.?\s+/i);
-      const home = (vs[0] || "Home " + (i + 1)).replace(/[@\d.].*$/, "").trim();
-      const away = (vs[1] || "Away " + (i + 1)).replace(/[@\d.].*$/, "").trim();
-      const odds = (oddsMatch || ["2.10", "3.20", "3.40"]).slice(0, 3).map(Number);
-      while (odds.length < 3) odds.push(2.5);
-      return { home, away, odds: { home: odds[0], draw: odds[1], away: odds[2] }, raw: line };
+    .forEach((line) => {
+      const odds = (line.match(/\d+\.\d{1,2}/g) || []).slice(0, 3).map(Number);
+      while (odds.length < 3) odds.push(2.1 + odds.length * 0.4);
+      let home = "", away = "";
+      const vs = line.match(/([A-Za-z][A-Za-z0-9]{1,14})\s+vs\.?\s+([A-Za-z][A-Za-z0-9]{1,14})/i);
+      if (vs) {
+        home = vs[1].toUpperCase();
+        away = vs[2].toUpperCase();
+      } else {
+        const codes = line.toUpperCase().match(/\b[A-Z]{3}\b/g) || [];
+        if (codes.length >= 2) {
+          home = codes[0];
+          away = codes[1];
+        }
+      }
+      if (!home || !away) return;
+      out.push({ home, away, odds: { home: odds[0], draw: odds[1], away: odds[2] }, raw: line });
     });
+  return out;
 }
 function marketLean(fx) {
   const raw = [
@@ -114,17 +139,21 @@ function marketLean(fx) {
 }
 
 app.post("/api/analyse-spin", auth, (req, res) => {
-  const text = String((req.body && req.body.text) || "");
-  const parts = text.split(/[,/|\n]+/).map((s) => s.trim()).filter(Boolean);
-  if (!parts.length) return res.status(400).json({ error: "Type the sectors first" });
-  const pick = parts[Math.floor(Math.random() * parts.length)];
-  res.json({
-    ok: true,
-    pick,
-    sectors: parts,
-    headline: "AI spin note",
-    text: "Suggested focus: " + pick + " Â· from " + parts.length + " sectors you typed.",
+  const d0 = storeLoad();
+  const u0 = d0.users.find((x) => x.id === req.auth.id);
+  if (!u0) return res.status(401).json({ error: "Not logged in" });
+  if ((u0.credits || 0) < 2) {
+    return res.status(403).json({ error: "Need 2 diamonds for one spin" });
+  }
+  const pick = Math.random() < 0.5 ? "UP" : "DOWN";
+  const confidence = 62 + Math.floor(Math.random() * 23);
+  const roundId = "SPIN-" + Date.now().toString(36);
+  storeUpdate((d) => {
+    const u = d.users.find((x) => x.id === req.auth.id);
+    if (u) u.credits = Math.max(0, (u.credits || 0) - 2);
   });
+  const credits = storeLoad().users.find((x) => x.id === req.auth.id).credits;
+  res.json({ ok: true, pick, confidence, roundId, credits });
 });
 
 app.get("/api/public", (_req, res) => res.json({ settings: publicSettings() }));
@@ -168,8 +197,8 @@ app.post("/api/signup", (req, res) => {
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
-  res.cookie("iv_token", sign(user), { httpOnly: true, sameSite: "lax", maxAge: 14 * 864e5 });
-  res.json({ user: safeUser(user) });
+  const token = setSession(res, user);
+  res.json({ user: safeUser(user), token });
 });
 
 function storeUpdate(fn) {
@@ -205,8 +234,8 @@ app.post("/api/login", (req, res) => {
   } else if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(400).json({ error: "Wrong email or password" });
   }
-  res.cookie("iv_token", sign(user), { httpOnly: true, sameSite: "lax", maxAge: 14 * 864e5 });
-  res.json({ user: safeUser(user) });
+  const token = setSession(res, user);
+  res.json({ user: safeUser(user), token });
 });
 
 app.post("/api/logout", (_req, res) => {
@@ -231,21 +260,28 @@ app.post("/api/country", auth, (req, res) => {
 });
 
 app.post("/api/payment-proof", auth, (req, res) => {
-  const { txId, senderName, payerNumber, screenshotName, screenshot } = req.body || {};
+  const { txId, senderName, payerNumber, screenshotName, screenshot, type } = req.body || {};
   if (!senderName || !payerNumber) return res.status(400).json({ error: "Sender name and number are required" });
+  const kind = type === "diamonds" ? "diamonds" : "registration";
   storeUpdate((d) => {
     const u = d.users.find((x) => x.id === req.auth.id);
     if (!u) return;
-    u.paymentStatus = "proof_sent";
-    u.status = "pending";
+    if (kind === "registration") {
+      u.paymentStatus = "proof_sent";
+      u.status = "pending";
+    } else {
+      u.diamondProof = "proof_sent";
+    }
     d.payments.unshift({
       id: store.uid("pay"),
       user_id: u.id,
       user_name: u.name,
       user_email: u.email,
-      amount: u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS,
-      currency: u.country === "NG" ? "NGN" : "GHS",
-      type: "registration",
+      amount: kind === "diamonds"
+        ? (d.settings.diamondPriceGHS || 20)
+        : (u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS),
+      currency: u.country === "NG" && kind !== "diamonds" ? "NGN" : "GHS",
+      type: kind,
       status: "proof_sent",
       txId: txId || "",
       senderName,
@@ -266,9 +302,16 @@ app.post("/api/analyse", auth, (req, res) => {
   const user = data.users.find((u) => u.id === req.auth.id);
   if (!user.paid && data.settings.requireFee) return res.status(403).json({ error: "Registration fee not marked paid yet" });
   if (user.status !== "active") return res.status(403).json({ error: "Account is " + user.status });
-  const text = (req.body && req.body.fixturesText) || "";
-  if (!text.trim()) return res.status(400).json({ error: "Paste at least one fixture line" });
-  const fixtures = parseFixtures(text);
+  const want = String((req.body && req.body.want) || "").trim();
+  const text = want || (req.body && req.body.fixturesText) || "";
+  if (!String(text).trim()) return res.status(400).json({ error: "No matches found. Type 1 or 2 games." });
+  let fixtures = parseFixtures(text);
+  if (!fixtures.length && want) fixtures = parseFixtures(want);
+  if (!fixtures.length) return res.status(400).json({ error: "Type games like TOT vs LIV" });
+  const cost = 2;
+  if ((user.credits || 0) < cost) {
+    return res.status(403).json({ error: "Need 2 diamonds to predict this screenshot" });
+  }
   const leans = fixtures.map(marketLean);
   const slip = {
     id: store.uid("slip"),
@@ -282,9 +325,10 @@ app.post("/api/analyse", auth, (req, res) => {
   storeUpdate((d) => {
     d.slips.unshift(slip);
     const u = d.users.find((x) => x.id === user.id);
-    if (u && u.credits > 0) u.credits -= 1;
+    if (u) u.credits = Math.max(0, (u.credits || 0) - cost);
   });
-  res.json({ slip: { id: slip.id, fixtures, leans } });
+  const left = storeLoad().users.find((x) => x.id === user.id).credits;
+  res.json({ slip: { id: slip.id, fixtures, leans }, credits: left, cost });
 });
 
 app.get("/api/my/slips", auth, (req, res) => {
@@ -323,7 +367,14 @@ app.post("/api/admin/users/:id/action", auth, adminOnly, (req, res) => {
         if (p.user_id === u.id && p.status !== "paid") p.status = "paid";
       });
     }
-    if (action === "credit") u.credits = (u.credits || 0) + 5;
+    if (action === "credit") u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
+    if (action === "diamonds") {
+      u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
+      u.diamondProof = "paid";
+      d.payments.forEach((p) => {
+        if (p.user_id === u.id && p.type === "diamonds" && p.status !== "paid") p.status = "paid";
+      });
+    }
   });
   res.json({ ok: true });
 });
@@ -373,6 +424,8 @@ app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
     if (s.registrationFeeGHS !== undefined) d.settings.registrationFeeGHS = Number(s.registrationFeeGHS);
     if (s.registrationFeeDisplayGHS !== undefined) d.settings.registrationFeeDisplayGHS = Number(s.registrationFeeDisplayGHS);
     if (s.registrationFeeNGN !== undefined) d.settings.registrationFeeNGN = Number(s.registrationFeeNGN);
+    if (s.diamondPriceGHS !== undefined) d.settings.diamondPriceGHS = Number(s.diamondPriceGHS);
+    if (s.diamondQty !== undefined) d.settings.diamondQty = Number(s.diamondQty);
     ["momoNetwork", "momoNumber", "momoName", "telegramPay", "ngBank"].forEach((k) => {
       if (s[k] !== undefined) d.settings[k] = s[k];
     });

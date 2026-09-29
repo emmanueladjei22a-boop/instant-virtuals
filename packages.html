@@ -8,15 +8,28 @@
 <body class="desk-body">
 <header class="desk-top">
   <a class="brand" href="/app.html">‹ Packages</a>
+  <div class="desk-actions"><b id="gold">0</b> ◆</div>
 </header>
 <main class="desk">
   <p class="desk-hi">Buy diamonds</p>
-  <p class="desk-sub">Registration is separate. This pack only adds diamonds.</p>
+  <p class="desk-sub">Pick Regular, VIP or VVIP. Registration is separate.</p>
+  <div class="desk-card" id="regular">
+    <div class="desk-label">REGULAR</div>
+    <h2 id="regQ">10 ◆</h2>
+    <p id="regP">GH₵20</p>
+    <a class="btn btn-orange block" href="/pay.html?buy=diamonds&pack=regular">BUY REGULAR</a>
+  </div>
   <div class="desk-card glow">
-    <div class="desk-label">DIAMOND PACK</div>
-    <h2 id="qty">10 ◆</h2>
-    <p id="price">GH₵20</p>
-    <a class="btn btn-orange block" href="/pay.html?buy=diamonds">BUY NOW</a>
+    <div class="desk-label">VIP</div>
+    <h2 id="vipQ">30 ◆</h2>
+    <p id="vipP">GH₵50</p>
+    <a class="btn btn-orange block" href="/pay.html?buy=diamonds&pack=vip">BUY VIP</a>
+  </div>
+  <div class="desk-card glow">
+    <div class="desk-label">VVIP</div>
+    <h2 id="vvipQ">80 ◆</h2>
+    <p id="vvipP">GH₵100</p>
+    <a class="btn btn-orange block" href="/pay.html?buy=diamonds&pack=vvip">BUY VVIP</a>
   </div>
 </main>
 <script src="/api.js"></script>
@@ -25,8 +38,13 @@
   const d=await api("/api/me").catch(()=>null);
   if(!d) return location.replace("/login.html?next=/packages.html");
   const s=d.settings;
-  document.getElementById("qty").textContent=(s.diamondQty||10)+" ◆";
-  document.getElementById("price").textContent="GH₵"+(s.diamondPriceGHS||20);
+  document.getElementById("gold").textContent=d.user.credits||0;
+  document.getElementById("regQ").textContent=(s.packRegularQty||10)+" ◆";
+  document.getElementById("regP").textContent="GH₵"+(s.packRegularPrice||20);
+  document.getElementById("vipQ").textContent=(s.packVipQty||30)+" ◆";
+  document.getElementById("vipP").textContent="GH₵"+(s.packVipPrice||50);
+  document.getElementById("vvipQ").textContent=(s.packVvipQty||80)+" ◆";
+  document.getElementById("vvipP").textContent="GH₵"+(s.packVvipPrice||100);
 })();
 </script>
 </body>

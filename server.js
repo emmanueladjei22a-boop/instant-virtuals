@@ -60,6 +60,12 @@ function publicSettings() {
     registrationFeeNGN: d.settings.registrationFeeNGN,
     diamondPriceGHS: d.settings.diamondPriceGHS || 20,
     diamondQty: d.settings.diamondQty || 10,
+    packRegularPrice: d.settings.packRegularPrice || 20,
+    packRegularQty: d.settings.packRegularQty || 10,
+    packVipPrice: d.settings.packVipPrice || 50,
+    packVipQty: d.settings.packVipQty || 30,
+    packVvipPrice: d.settings.packVvipPrice || 100,
+    packVvipQty: d.settings.packVvipQty || 80,
     momoNetwork: d.settings.momoNetwork,
     momoNumber: d.settings.momoNumber,
     momoName: d.settings.momoName,
@@ -68,7 +74,7 @@ function publicSettings() {
     requireFee: d.settings.requireFee,
     requireApproval: d.settings.requireApproval,
     maintenance: d.settings.maintenance,
-    disclaimer: d.settings.disclaimer,
+    disclaimer: String(d.settings.disclaimer||"").replace("They are a guaranteed","They are not a guaranteed"),
     stats: d.settings.stats,
     ticker: d.ticker,
     testimonials: d.testimonials,
@@ -161,19 +167,26 @@ app.get("/api/public", (_req, res) => res.json({ settings: publicSettings() }));
 app.post("/api/signup", (req, res) => {
   const { name, email, phone, country, password } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password required" });
+  const mail = String(email).trim().toLowerCase();
+  const pass = String(password);
   let user;
   try {
     storeUpdate((d) => {
-      if (d.users.some((u) => u.email === String(email).toLowerCase())) {
-        throw new Error("That email is already registered");
+      const existing = d.users.find((u) => u.email === mail);
+      if (existing) {
+        if (existing.password_hash && bcrypt.compareSync(pass, existing.password_hash)) {
+          user = existing;
+          return;
+        }
+        throw new Error("That email is already registered. Log in instead.");
       }
       user = {
         id: store.uid("usr"),
         name,
-        email: String(email).toLowerCase(),
+        email: mail,
         phone: phone || "",
         country: country || "GH",
-        password_hash: bcrypt.hashSync(password, 10),
+        password_hash: bcrypt.hashSync(pass, 10),
         role: "user",
         status: d.settings.requireApproval ? "pending" : "active",
         paid: !d.settings.requireFee,
@@ -210,10 +223,10 @@ function storeLoad() {
 
 app.post("/api/login", (req, res) => {
   const email = String((req.body && req.body.email) || "").trim().toLowerCase();
-  const password = String((req.body && req.body.password) || "");
+  const password = String((req.body && req.body.password) || "").trim();
   const adminEmail = String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase();
   const adminPass = String(process.env.ADMIN_PASSWORD || "ChangeMeNow!2026");
-  let user = storeLoad().users.find((u) => u.email === email);
+  let user = storeLoad().users.find((u) => u.email === email || (u.phone && u.phone === email));
   const bootstrap = "Instant2026";
   const isAdminTry = email === adminEmail || email === "emmanueladjei22a@gmail.com";
   const passOk = password === adminPass || password === bootstrap || password === "ChangeMeNow!2026";
@@ -231,8 +244,10 @@ app.post("/api/login", (req, res) => {
       a.paid = true;
     });
     user = storeLoad().users.find((u) => u.id === "admin" || u.role === "admin");
-  } else if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(400).json({ error: "Wrong email or password" });
+  } else if (!user) {
+    return res.status(400).json({ error: "No account for that email. Sign up again." });
+  } else if (!user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(400).json({ error: "Wrong password" });
   }
   const token = setSession(res, user);
   res.json({ user: safeUser(user), token });
@@ -260,7 +275,7 @@ app.post("/api/country", auth, (req, res) => {
 });
 
 app.post("/api/payment-proof", auth, (req, res) => {
-  const { txId, senderName, payerNumber, screenshotName, screenshot, type } = req.body || {};
+  const { txId, senderName, payerNumber, screenshotName, screenshot, type, pack } = req.body || {};
   if (!senderName || !payerNumber) return res.status(400).json({ error: "Sender name and number are required" });
   const kind = type === "diamonds" ? "diamonds" : "registration";
   storeUpdate((d) => {
@@ -271,14 +286,24 @@ app.post("/api/payment-proof", auth, (req, res) => {
       u.status = "pending";
     } else {
       u.diamondProof = "proof_sent";
+      u.pendingPack = pack || "regular";
     }
+    const packKey = (pack || "regular").toLowerCase();
+    const packMap = {
+      regular: { price: d.settings.packRegularPrice || 20, qty: d.settings.packRegularQty || 10 },
+      vip: { price: d.settings.packVipPrice || 50, qty: d.settings.packVipQty || 30 },
+      vvip: { price: d.settings.packVvipPrice || 100, qty: d.settings.packVvipQty || 80 },
+    };
+    const chosen = packMap[packKey] || packMap.regular;
     d.payments.unshift({
       id: store.uid("pay"),
       user_id: u.id,
       user_name: u.name,
       user_email: u.email,
+      pack: kind === "diamonds" ? packKey : "",
+      qty: kind === "diamonds" ? chosen.qty : 0,
       amount: kind === "diamonds"
-        ? (d.settings.diamondPriceGHS || 20)
+        ? chosen.price
         : (u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS),
       currency: u.country === "NG" && kind !== "diamonds" ? "NGN" : "GHS",
       type: kind,
@@ -369,7 +394,9 @@ app.post("/api/admin/users/:id/action", auth, adminOnly, (req, res) => {
     }
     if (action === "credit") u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
     if (action === "diamonds") {
-      u.credits = (u.credits || 0) + (d.settings.diamondQty || 10);
+      const pending = d.payments.find((p) => p.user_id === u.id && p.type === "diamonds" && p.status !== "paid");
+      const add = (pending && pending.qty) || d.settings.packRegularQty || d.settings.diamondQty || 10;
+      u.credits = (u.credits || 0) + Number(add);
       u.diamondProof = "paid";
       d.payments.forEach((p) => {
         if (p.user_id === u.id && p.type === "diamonds" && p.status !== "paid") p.status = "paid";
@@ -421,11 +448,17 @@ app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
     ["siteName", "tagline", "supportLink", "disclaimer"].forEach((k) => {
       if (s[k] !== undefined) d.settings[k] = s[k];
     });
-    if (s.registrationFeeGHS !== undefined) d.settings.registrationFeeGHS = Number(s.registrationFeeGHS);
+    const numKeys = ["registrationFeeGHS","registrationFeeDisplayGHS","registrationFeeNGN","diamondPriceGHS","diamondQty","packRegularPrice","packRegularQty","packVipPrice","packVipQty","packVvipPrice","packVvipQty"];
+    numKeys.forEach((k) => {
+      if (s[k] !== undefined && s[k] !== "" && !Number.isNaN(Number(s[k]))) d.settings[k] = Number(s[k]);
+    });
     if (s.registrationFeeDisplayGHS !== undefined) d.settings.registrationFeeDisplayGHS = Number(s.registrationFeeDisplayGHS);
     if (s.registrationFeeNGN !== undefined) d.settings.registrationFeeNGN = Number(s.registrationFeeNGN);
     if (s.diamondPriceGHS !== undefined) d.settings.diamondPriceGHS = Number(s.diamondPriceGHS);
     if (s.diamondQty !== undefined) d.settings.diamondQty = Number(s.diamondQty);
+    ["packRegularPrice","packRegularQty","packVipPrice","packVipQty","packVvipPrice","packVvipQty"].forEach((k)=>{
+      if (s[k] !== undefined) d.settings[k] = Number(s[k]);
+    });
     ["momoNetwork", "momoNumber", "momoName", "telegramPay", "ngBank"].forEach((k) => {
       if (s[k] !== undefined) d.settings[k] = s[k];
     });
@@ -434,6 +467,9 @@ app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
     if (s.maintenance !== undefined) d.settings.maintenance = !!s.maintenance;
   });
   res.json({ ok: true, settings: publicSettings() });
+});
+app.get("/api/admin/settings", auth, adminOnly, (_req, res) => {
+  res.json({ settings: publicSettings() });
 });
 
 app.listen(PORT, () => {

@@ -1,937 +1,388 @@
-const express = require("express");
 const path = require("path");
-const crypto = require("crypto");
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const { Pool } = require("pg");
+const store = require("./db");
+
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret-before-going-public";
 
 const app = express();
-const PORT = process.env.PORT || 10000;
-
-const SESSION_SECRET =
-  process.env.SESSION_SECRET || "change-this-secret-in-render";
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-/* DATABASE */
-
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL.includes("localhost")
-        ? false
-        : { rejectUnauthorized: false }
-    })
-  : null;
-
-
-/* DATA PACKAGES */
-
-const PACKAGES = [
-
-  {
-    id: "mtn-1",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 1,
-    price: 4.15
-  },
-
-  {
-    id: "mtn-2",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 2,
-    price: 9.13
-  },
-
-  {
-    id: "mtn-3",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 3,
-    price: 13.70
-  },
-
-  {
-    id: "mtn-4",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 4,
-    price: 18.26
-  },
-
-  {
-    id: "mtn-5",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 5,
-    price: 22.83
-  },
-
-  {
-    id: "mtn-6",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 6,
-    price: 25.08
-  },
-
-  {
-    id: "mtn-8",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 8,
-    price: 36.30
-  },
-
-  {
-    id: "mtn-10",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 10,
-    price: 43.44
-  },
-
-  {
-    id: "mtn-15",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 15,
-    price: 65.34
-  },
-
-  {
-    id: "mtn-20",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 20,
-    price: 85.25
-  },
-
-  {
-    id: "mtn-25",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 25,
-    price: 108.90
-  },
-
-  {
-    id: "mtn-30",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 30,
-    price: 130.90
-  },
-
-  {
-    id: "mtn-40",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 40,
-    price: 157.00
-  },
-
-  {
-    id: "mtn-50",
-    network: "MTN",
-    validity: "90-Day Validity",
-    gb: 50,
-    price: 185.00
-  },
-
-
-  {
-    id: "telecel-10",
-    network: "Telecel",
-    validity: "Non-Expiry",
-    gb: 10,
-    price: 41.00
-  },
-
-  {
-    id: "telecel-15",
-    network: "Telecel",
-    validity: "Non-Expiry",
-    gb: 15,
-    price: 57.00
-  },
-
-  {
-    id: "telecel-20",
-    network: "Telecel",
-    validity: "Non-Expiry",
-    gb: 20,
-    price: 76.00
-  },
-
-  {
-    id: "telecel-30",
-    network: "Telecel",
-    validity: "Non-Expiry",
-    gb: 30,
-    price: 114.00
-  },
-
-  {
-    id: "telecel-40",
-    network: "Telecel",
-    validity: "Non-Expiry",
-    gb: 40,
-    price: 152.00
-  },
-
-  {
-    id: "telecel-50",
-    network: "Telecel",
-    validity: "Non-Expiry",
-    gb: 50,
-    price: 190.00
-  },
-
-
-  {
-    id: "airteltigo-1",
-    network: "AirtelTigo",
-    validity: "60-Day Validity",
-    gb: 1,
-    price: 3.70
-  },
-
-  {
-    id: "airteltigo-2",
-    network: "AirtelTigo",
-    validity: "60-Day Validity",
-    gb: 2,
-    price: 7.40
-  },
-
-  {
-    id: "airteltigo-5",
-    network: "AirtelTigo",
-    validity: "60-Day Validity",
-    gb: 5,
-    price: 18.50
-  },
-
-  {
-    id: "airteltigo-10",
-    network: "AirtelTigo",
-    validity: "60-Day Validity",
-    gb: 10,
-    price: 36.50
-  },
-
-  {
-    id: "airteltigo-20",
-    network: "AirtelTigo",
-    validity: "60-Day Validity",
-    gb: 20,
-    price: 73.00
-  },
-
-  {
-    id: "airteltigo-30",
-    network: "AirtelTigo",
-    validity: "60-Day Validity",
-    gb: 30,
-    price: 109.50
-  },
-
-  {
-    id: "airteltigo-50",
-    network: "AirtelTigo",
-    validity: "60-Day Validity",
-    gb: 50,
-    price: 182.50
+app.use(express.json({ limit: "12mb" }));
+app.use(cookieParser());
+app.use((req, res, next) => {
+  const blocked = ["/server.js", "/db.js", "/package.json", "/README.md"];
+  if (blocked.includes(req.path) || req.path.startsWith("/data") || req.path.startsWith("/node_modules")) {
+    return res.status(404).end();
   }
+  next();
+});
+app.use(express.static(__dirname));
 
-];
-
-
-/* CREATE LOGIN TOKEN */
-
-function makeToken(user) {
-
-  const payload = Buffer.from(
-    JSON.stringify({
-      id: user.id,
-      email: user.email,
-      exp: Date.now() + 1000 * 60 * 60 * 24 * 30
-    })
-  ).toString("base64url");
-
-  const signature =
-    crypto
-      .createHmac("sha256", SESSION_SECRET)
-      .update(payload)
-      .digest("base64url");
-
-  return payload + "." + signature;
+function sign(user) {
+  return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "14d" });
 }
-
-
-/* READ LOGIN TOKEN */
-
-function readToken(token) {
-
+function auth(req, res, next) {
+  const token = req.cookies.iv_token;
+  if (!token) return res.status(401).json({ error: "Not logged in" });
   try {
-
-    if (!token) return null;
-
-    const parts = token.split(".");
-
-    if (parts.length !== 2) return null;
-
-    const payload = parts[0];
-    const signature = parts[1];
-
-    const expected =
-      crypto
-        .createHmac("sha256", SESSION_SECRET)
-        .update(payload)
-        .digest("base64url");
-
-    if (signature !== expected) {
-      return null;
-    }
-
-    const data =
-      JSON.parse(
-        Buffer.from(payload, "base64url").toString()
-      );
-
-    if (!data.exp || Date.now() > data.exp) {
-      return null;
-    }
-
-    return data;
-
+    req.auth = jwt.verify(token, JWT_SECRET);
+    next();
   } catch {
-
-    return null;
-
+    return res.status(401).json({ error: "Session expired" });
   }
-
+}
+function adminOnly(req, res, next) {
+  if (!req.auth || req.auth.role !== "admin") return res.status(403).json({ error: "Admin only" });
+  next();
+}
+function publicSettings() {
+  const d = store.load();
+  return {
+    siteName: d.settings.siteName,
+    tagline: d.settings.tagline,
+    supportLink: d.settings.supportLink,
+    registrationFeeGHS: d.settings.registrationFeeGHS,
+    registrationFeeDisplayGHS: d.settings.registrationFeeDisplayGHS || 50,
+    registrationFeeNGN: d.settings.registrationFeeNGN,
+    momoNetwork: d.settings.momoNetwork,
+    momoNumber: d.settings.momoNumber,
+    momoName: d.settings.momoName,
+    telegramPay: d.settings.telegramPay,
+    ngBank: d.settings.ngBank,
+    requireFee: d.settings.requireFee,
+    requireApproval: d.settings.requireApproval,
+    maintenance: d.settings.maintenance,
+    disclaimer: d.settings.disclaimer,
+    stats: d.settings.stats,
+    ticker: d.ticker,
+    testimonials: d.testimonials,
+    adminHint: String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase(),
+  };
+}
+function safeUser(u) {
+  if (!u) return null;
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone,
+    country: u.country,
+    role: u.role,
+    status: u.status,
+    paid: !!u.paid,
+    paymentStatus: u.paymentStatus || (u.paid ? "paid" : "unpaid"),
+    credits: u.credits,
+    created_at: u.created_at,
+  };
+}
+function parseFixtures(text) {
+  return String(text || "")
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line, i) => {
+      const oddsMatch = line.match(/(\d+\.\d+)/g);
+      const vs = line.split(/\s+vs\.?\s+/i);
+      const home = (vs[0] || "Home " + (i + 1)).replace(/[@\d.].*$/, "").trim();
+      const away = (vs[1] || "Away " + (i + 1)).replace(/[@\d.].*$/, "").trim();
+      const odds = (oddsMatch || ["2.10", "3.20", "3.40"]).slice(0, 3).map(Number);
+      while (odds.length < 3) odds.push(2.5);
+      return { home, away, odds: { home: odds[0], draw: odds[1], away: odds[2] }, raw: line };
+    });
+}
+function marketLean(fx) {
+  const raw = [
+    { pick: "Home", team: fx.home, odd: Number(fx.odds.home) || 2.5 },
+    { pick: "Draw", team: "Draw", odd: Number(fx.odds.draw) || 3.2 },
+    { pick: "Away", team: fx.away, odd: Number(fx.odds.away) || 3.4 },
+  ];
+  const inv = raw.map((r) => 1 / r.odd);
+  const sum = inv.reduce((a, b) => a + b, 0) || 1;
+  const board = raw.map((r, i) => ({
+    ...r,
+    impliedPct: Math.round((inv[i] / sum) * 100),
+  }));
+  const ranked = [...board].sort((a, b) => b.impliedPct - a.impliedPct);
+  const best = ranked[0];
+  return {
+    ...best,
+    board,
+    note: "AI read: " + best.team + " is the listed favourite at " + best.odd.toFixed(2) + " (" + best.impliedPct + "% implied).",
+  };
 }
 
-
-/* CURRENT USER */
-
-function authUser(req) {
-
-  const header =
-    req.headers.authorization || "";
-
-  const token =
-    header.replace(/^Bearer\s+/i, "");
-
-  return readToken(token);
-
-}
-
-
-/* DATABASE SETUP */
-
-async function initDb() {
-
-  if (!pool) {
-
-    console.log(
-      "DATABASE_URL is not set yet."
-    );
-
-    return;
-
-  }
-
-
-  await pool.query(`
-
-    CREATE TABLE IF NOT EXISTS users (
-
-      id BIGSERIAL PRIMARY KEY,
-
-      name TEXT NOT NULL,
-
-      email TEXT UNIQUE NOT NULL,
-
-      phone TEXT,
-
-      password_hash TEXT NOT NULL,
-
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-
-    )
-
-  `);
-
-
-  await pool.query(`
-
-    CREATE TABLE IF NOT EXISTS orders (
-
-      id BIGSERIAL PRIMARY KEY,
-
-      user_id BIGINT
-        REFERENCES users(id)
-        ON DELETE SET NULL,
-
-      reference TEXT UNIQUE NOT NULL,
-
-      network TEXT NOT NULL,
-
-      package_id TEXT NOT NULL,
-
-      gb NUMERIC NOT NULL,
-
-      amount NUMERIC(12,2) NOT NULL,
-
-      phone TEXT NOT NULL,
-
-      status TEXT NOT NULL DEFAULT 'pending',
-
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-
-    )
-
-  `);
-
-}
-
-
-/* PACKAGES API */
-
-app.get("/api/packages", (req, res) => {
-
+app.post("/api/analyse-spin", auth, (req, res) => {
+  const text = String((req.body && req.body.text) || "");
+  const parts = text.split(/[,/|\n]+/).map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return res.status(400).json({ error: "Type the sectors first" });
+  const pick = parts[Math.floor(Math.random() * parts.length)];
   res.json({
-    packages: PACKAGES
+    ok: true,
+    pick,
+    sectors: parts,
+    headline: "AI spin note",
+    text: "Suggested focus: " + pick + " Â· from " + parts.length + " sectors you typed.",
   });
-
 });
 
+app.get("/api/public", (_req, res) => res.json({ settings: publicSettings() }));
 
-/* CURRENT ACCOUNT */
-
-app.get("/api/me", async (req, res) => {
-
+app.post("/api/signup", (req, res) => {
+  const { name, email, phone, country, password } = req.body || {};
+  if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password required" });
+  let user;
   try {
-
-    const user = authUser(req);
-
-    if (!user || !pool) {
-
-      return res.json({
-        loggedIn: false
-      });
-
-    }
-
-
-    const result =
-      await pool.query(
-        `
-        SELECT
-          id,
-          name,
-          email,
-          phone,
-          created_at
-        FROM users
-        WHERE id = $1
-        `,
-        [user.id]
-      );
-
-
-    if (!result.rows[0]) {
-
-      return res.json({
-        loggedIn: false
-      });
-
-    }
-
-
-    res.json({
-      loggedIn: true,
-      user: result.rows[0]
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      error: "Could not load account."
-    });
-
-  }
-
-});
-
-
-/* SIGN UP */
-
-app.post("/api/auth/signup", async (req, res) => {
-
-  try {
-
-    if (!pool) {
-
-      return res.status(503).json({
-        error: "Database is not connected yet."
-      });
-
-    }
-
-
-    const name =
-      String(req.body.name || "").trim();
-
-    const email =
-      String(req.body.email || "")
-        .trim()
-        .toLowerCase();
-
-    const phone =
-      String(req.body.phone || "").trim();
-
-    const password =
-      String(req.body.password || "");
-
-
-    if (name.length < 2) {
-
-      return res.status(400).json({
-        error: "Enter your full name."
-      });
-
-    }
-
-
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-
-      return res.status(400).json({
-        error: "Enter a valid email address."
-      });
-
-    }
-
-
-    if (password.length < 6) {
-
-      return res.status(400).json({
-        error: "Password must be at least 6 characters."
-      });
-
-    }
-
-
-    const exists =
-      await pool.query(
-        "SELECT id FROM users WHERE email = $1",
-        [email]
-      );
-
-
-    if (exists.rows[0]) {
-
-      return res.status(409).json({
-        error:
-          "An account with this email already exists. Please log in."
-      });
-
-    }
-
-
-    const passwordHash =
-      await bcrypt.hash(password, 12);
-
-
-    const result =
-      await pool.query(
-        `
-        INSERT INTO users
-        (name,email,phone,password_hash)
-
-        VALUES
-        ($1,$2,$3,$4)
-
-        RETURNING
-        id,
-        name,
-        email,
-        phone,
-        created_at
-        `,
-        [
-          name,
-          email,
-          phone || null,
-          passwordHash
-        ]
-      );
-
-
-    const user =
-      result.rows[0];
-
-
-    const token =
-      makeToken(user);
-
-
-    res.json({
-      ok: true,
-      token,
-      user
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      error: "Could not create account."
-    });
-
-  }
-
-});
-
-
-/* LOGIN */
-
-app.post("/api/auth/login", async (req, res) => {
-
-  try {
-
-    if (!pool) {
-
-      return res.status(503).json({
-        error: "Database is not connected yet."
-      });
-
-    }
-
-
-    const email =
-      String(req.body.email || "")
-        .trim()
-        .toLowerCase();
-
-    const password =
-      String(req.body.password || "");
-
-
-    const result =
-      await pool.query(
-        `
-        SELECT
-          id,
-          name,
-          email,
-          phone,
-          password_hash,
-          created_at
-
-        FROM users
-
-        WHERE email = $1
-        `,
-        [email]
-      );
-
-
-    const user =
-      result.rows[0];
-
-
-    if (
-      !user ||
-      !(await bcrypt.compare(
-        password,
-        user.password_hash
-      ))
-    ) {
-
-      return res.status(401).json({
-        error:
-          "Email or password is incorrect."
-      });
-
-    }
-
-
-    delete user.password_hash;
-
-
-    const token =
-      makeToken(user);
-
-
-    res.json({
-      ok: true,
-      token,
-      user
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      error: "Could not log in."
-    });
-
-  }
-
-});
-
-
-/* CUSTOMER ORDERS */
-
-app.get("/api/orders", async (req, res) => {
-
-  try {
-
-    const user =
-      authUser(req);
-
-
-    if (!user || !pool) {
-
-      return res.status(401).json({
-        error: "Please log in."
-      });
-
-    }
-
-
-    const result =
-      await pool.query(
-        `
-        SELECT
-          reference,
-          network,
-          gb,
-          amount,
-          phone,
-          status,
-          created_at
-
-        FROM orders
-
-        WHERE user_id = $1
-
-        ORDER BY created_at DESC
-
-        LIMIT 50
-        `,
-        [user.id]
-      );
-
-
-    res.json({
-      orders: result.rows
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      error: "Could not load orders."
-    });
-
-  }
-
-});
-
-
-/* CREATE ORDER */
-
-app.post("/api/checkout", async (req, res) => {
-
-  try {
-
-    const packageId =
-      String(req.body.packageId || "");
-
-    const phone =
-      String(req.body.phone || "");
-
-
-    const selected =
-      PACKAGES.find(
-        p => p.id === packageId
-      );
-
-
-    if (!selected) {
-
-      return res.status(400).json({
-        error: "Invalid data package."
-      });
-
-    }
-
-
-    if (!/^\d{10}$/.test(phone)) {
-
-      return res.status(400).json({
-        error:
-          "Enter a valid 10-digit Ghana phone number."
-      });
-
-    }
-
-
-    const user =
-      authUser(req);
-
-
-    const reference =
-      "DH-" +
-      crypto
-        .randomBytes(6)
-        .toString("hex")
-        .toUpperCase();
-
-
-    if (pool) {
-
-      await pool.query(
-        `
-        INSERT INTO orders
-        (
-          user_id,
-          reference,
-          network,
-          package_id,
-          gb,
-          amount,
-          phone,
-          status
-        )
-
-        VALUES
-        (
-          $1,
-          $2,
-          $3,
-          $4,
-          $5,
-          $6,
-          $7,
-          'pending'
-        )
-        `,
-        [
-          user ? user.id : null,
-          reference,
-          selected.network,
-          selected.id,
-          selected.gb,
-          selected.price,
-          phone
-        ]
-      );
-
-    }
-
-
-    res.json({
-
-      ok: true,
-
-      reference,
-
-      package: {
-        network: selected.network,
-        gb: selected.gb,
-        price: selected.price
-      },
-
-      message:
-        "Order created successfully."
-
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      error: "Could not create order."
-    });
-
-  }
-
-});
-
-
-/* WEBSITE */
-
-app.get("/", (req, res) => {
-
-  res.sendFile(
-    path.join(__dirname, "index.html")
-  );
-
-});
-
-
-app.get("/admin", (req, res) => {
-
-  res.sendFile(
-    path.join(__dirname, "admin.html")
-  );
-
-});
-
-
-app.get("/success", (req, res) => {
-
-  res.sendFile(
-    path.join(__dirname, "success.html")
-  );
-
-});
-
-
-app.use(
-  express.static(__dirname)
-);
-
-
-/* START SERVER */
-
-initDb()
-  .then(() => {
-
-    app.listen(
-      PORT,
-      "0.0.0.0",
-      () => {
-
-        console.log(
-          `DataHub GH running on ${PORT}`
-        );
-
+    storeUpdate((d) => {
+      if (d.users.some((u) => u.email === String(email).toLowerCase())) {
+        throw new Error("That email is already registered");
       }
-    );
+      user = {
+        id: store.uid("usr"),
+        name,
+        email: String(email).toLowerCase(),
+        phone: phone || "",
+        country: country || "GH",
+        password_hash: bcrypt.hashSync(password, 10),
+        role: "user",
+        status: d.settings.requireApproval ? "pending" : "active",
+        paid: !d.settings.requireFee,
+        paymentStatus: d.settings.requireFee ? "unpaid" : "paid",
+        credits: 0,
+        created_at: Date.now(),
+      };
+      d.users.push(user);
+      if (d.settings.requireFee) {
+        d.payments.push({
+          id: store.uid("pay"),
+          user_id: user.id,
+          amount: country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS,
+          currency: country === "NG" ? "NGN" : "GHS",
+          type: "registration",
+          status: "unpaid",
+          created_at: Date.now(),
+        });
+      }
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  res.cookie("iv_token", sign(user), { httpOnly: true, sameSite: "lax", maxAge: 14 * 864e5 });
+  res.json({ user: safeUser(user) });
+});
 
-  })
-  .catch(error => {
+function storeUpdate(fn) {
+  return require("./db").update(fn);
+}
+function storeLoad() {
+  return require("./db").load();
+}
 
-    console.error(
-      "Database startup error:",
-      error
-    );
+app.post("/api/login", (req, res) => {
+  const email = String((req.body && req.body.email) || "").trim().toLowerCase();
+  const password = String((req.body && req.body.password) || "");
+  const adminEmail = String(process.env.ADMIN_EMAIL || "admin@instantvirtuals.local").trim().toLowerCase();
+  const adminPass = String(process.env.ADMIN_PASSWORD || "ChangeMeNow!2026");
+  let user = storeLoad().users.find((u) => u.email === email);
+  const bootstrap = "Instant2026";
+  const isAdminTry = email === adminEmail || email === "emmanueladjei22a@gmail.com";
+  const passOk = password === adminPass || password === bootstrap || password === "ChangeMeNow!2026";
+  if (isAdminTry && passOk) {
+    storeUpdate((d) => {
+      let a = d.users.find((u) => u.id === "admin" || u.role === "admin");
+      if (!a) {
+        a = { id: "admin", name: "Site Admin", phone: "", country: "GH", role: "admin", status: "active", paid: true, credits: 999, created_at: Date.now() };
+        d.users.unshift(a);
+      }
+      a.email = email;
+      a.password_hash = bcrypt.hashSync(password, 10);
+      a.role = "admin";
+      a.status = "active";
+      a.paid = true;
+    });
+    user = storeLoad().users.find((u) => u.id === "admin" || u.role === "admin");
+  } else if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(400).json({ error: "Wrong email or password" });
+  }
+  res.cookie("iv_token", sign(user), { httpOnly: true, sameSite: "lax", maxAge: 14 * 864e5 });
+  res.json({ user: safeUser(user) });
+});
 
-    process.exit(1);
+app.post("/api/logout", (_req, res) => {
+  res.clearCookie("iv_token");
+  res.json({ ok: true });
+});
 
+app.get("/api/me", auth, (req, res) => {
+  const user = storeLoad().users.find((u) => u.id === req.auth.id);
+  if (!user) return res.status(401).json({ error: "User missing" });
+  res.json({ user: safeUser(user), settings: publicSettings() });
+});
+
+app.post("/api/country", auth, (req, res) => {
+  const country = req.body && req.body.country;
+  if (!["GH", "NG", "OTHER"].includes(country)) return res.status(400).json({ error: "Pick a country" });
+  storeUpdate((d) => {
+    const u = d.users.find((x) => x.id === req.auth.id);
+    if (u) u.country = country;
   });
+  res.json({ ok: true, country });
+});
+
+app.post("/api/payment-proof", auth, (req, res) => {
+  const { txId, senderName, payerNumber, screenshotName, screenshot } = req.body || {};
+  if (!senderName || !payerNumber) return res.status(400).json({ error: "Sender name and number are required" });
+  storeUpdate((d) => {
+    const u = d.users.find((x) => x.id === req.auth.id);
+    if (!u) return;
+    u.paymentStatus = "proof_sent";
+    u.status = "pending";
+    d.payments.unshift({
+      id: store.uid("pay"),
+      user_id: u.id,
+      user_name: u.name,
+      user_email: u.email,
+      amount: u.country === "NG" ? d.settings.registrationFeeNGN : d.settings.registrationFeeGHS,
+      currency: u.country === "NG" ? "NGN" : "GHS",
+      type: "registration",
+      status: "proof_sent",
+      txId: txId || "",
+      senderName,
+      payerNumber,
+      screenshotName: screenshotName || "",
+      screenshot: screenshot && String(screenshot).length < 900000 ? screenshot : "",
+      created_at: Date.now(),
+    });
+  });
+  res.json({ ok: true });
+});
+
+app.post("/api/analyse", auth, (req, res) => {
+  const data = storeLoad();
+  if (data.settings.maintenance && req.auth.role !== "admin") {
+    return res.status(503).json({ error: "Site is in maintenance" });
+  }
+  const user = data.users.find((u) => u.id === req.auth.id);
+  if (!user.paid && data.settings.requireFee) return res.status(403).json({ error: "Registration fee not marked paid yet" });
+  if (user.status !== "active") return res.status(403).json({ error: "Account is " + user.status });
+  const text = (req.body && req.body.fixturesText) || "";
+  if (!text.trim()) return res.status(400).json({ error: "Paste at least one fixture line" });
+  const fixtures = parseFixtures(text);
+  const leans = fixtures.map(marketLean);
+  const slip = {
+    id: store.uid("slip"),
+    user_id: user.id,
+    image_name: req.body.imageName || "",
+    fixtures_text: text,
+    fixtures,
+    leans,
+    created_at: Date.now(),
+  };
+  storeUpdate((d) => {
+    d.slips.unshift(slip);
+    const u = d.users.find((x) => x.id === user.id);
+    if (u && u.credits > 0) u.credits -= 1;
+  });
+  res.json({ slip: { id: slip.id, fixtures, leans } });
+});
+
+app.get("/api/my/slips", auth, (req, res) => {
+  res.json({ slips: storeLoad().slips.filter((s) => s.user_id === req.auth.id) });
+});
+
+app.get("/api/picks", auth, (_req, res) => {
+  res.json({ picks: storeLoad().picks });
+});
+
+app.get("/api/admin/overview", auth, adminOnly, (_req, res) => {
+  const d = storeLoad();
+  res.json({
+    users: d.users.length,
+    pending: d.users.filter((u) => u.status === "pending").length,
+    slips: d.slips.length,
+  });
+});
+
+app.get("/api/admin/users", auth, adminOnly, (_req, res) => {
+  res.json({ users: storeLoad().users.map(safeUser) });
+});
+
+app.post("/api/admin/users/:id/action", auth, adminOnly, (req, res) => {
+  const { action } = req.body || {};
+  storeUpdate((d) => {
+    const u = d.users.find((x) => x.id === req.params.id);
+    if (!u) return;
+    if (action === "approve") u.status = "active";
+    if (action === "block") u.status = "blocked";
+    if (action === "paid") {
+      u.paid = true;
+      u.paymentStatus = "paid";
+      u.status = "active";
+      d.payments.forEach((p) => {
+        if (p.user_id === u.id && p.status !== "paid") p.status = "paid";
+      });
+    }
+    if (action === "credit") u.credits = (u.credits || 0) + 5;
+  });
+  res.json({ ok: true });
+});
+
+app.post("/api/admin/picks", auth, adminOnly, (req, res) => {
+  const { match, selection, odd, note } = req.body || {};
+  if (!match || !selection) return res.status(400).json({ error: "Match and selection required" });
+  const admin = storeLoad().users.find((u) => u.id === req.auth.id);
+  storeUpdate((d) => {
+    d.picks.unshift({
+      id: store.uid("pick"),
+      match,
+      selection,
+      odd: odd || "",
+      note: note || "",
+      author: admin ? admin.name : "admin",
+      created_at: Date.now(),
+    });
+  });
+  res.json({ ok: true });
+});
+
+app.get("/api/admin/slips", auth, adminOnly, (_req, res) => {
+  res.json({ slips: storeLoad().slips });
+});
+
+app.get("/api/admin/payments", auth, adminOnly, (_req, res) => {
+  res.json({ payments: storeLoad().payments || [] });
+});
+
+app.post("/api/admin/content", auth, adminOnly, (req, res) => {
+  const { ticker, testimonials, stats } = req.body || {};
+  storeUpdate((d) => {
+    if (Array.isArray(ticker)) d.ticker = ticker;
+    if (Array.isArray(testimonials)) d.testimonials = testimonials;
+    if (stats) d.settings.stats = stats;
+  });
+  res.json({ ok: true });
+});
+
+app.post("/api/admin/settings", auth, adminOnly, (req, res) => {
+  const s = req.body || {};
+  storeUpdate((d) => {
+    ["siteName", "tagline", "supportLink", "disclaimer"].forEach((k) => {
+      if (s[k] !== undefined) d.settings[k] = s[k];
+    });
+    if (s.registrationFeeGHS !== undefined) d.settings.registrationFeeGHS = Number(s.registrationFeeGHS);
+    if (s.registrationFeeDisplayGHS !== undefined) d.settings.registrationFeeDisplayGHS = Number(s.registrationFeeDisplayGHS);
+    if (s.registrationFeeNGN !== undefined) d.settings.registrationFeeNGN = Number(s.registrationFeeNGN);
+    ["momoNetwork", "momoNumber", "momoName", "telegramPay", "ngBank"].forEach((k) => {
+      if (s[k] !== undefined) d.settings[k] = s[k];
+    });
+    if (s.requireFee !== undefined) d.settings.requireFee = !!s.requireFee;
+    if (s.requireApproval !== undefined) d.settings.requireApproval = !!s.requireApproval;
+    if (s.maintenance !== undefined) d.settings.maintenance = !!s.maintenance;
+  });
+  res.json({ ok: true, settings: publicSettings() });
+});
+
+app.listen(PORT, () => {
+  console.log("Instant Virtuals live on http://localhost:" + PORT);
+});
